@@ -1,8 +1,9 @@
 # Physics Configuration
-G 1
-dt 0.001
-softening 0.001
-K_elasticity 0.5
-F_stickiness 1
-K_friction 0.5
-contact_distance 1.01
+G 10
+gravity_degree -10
+dt 1e-15
+softening 10
+K_elasticity 0.2
+F_stickiness 0
+K_friction 0.2
+contact_distance 1.1

@@ -19,7 +19,7 @@ if exist palette.png del palette.png
 if %errorlevel% == 0 (
     echo.
     echo ========================================
-    echo   The GIF has been successfully created: bin\output.gif
+    echo   The GIF has been successfully created: bin\record.gif
     echo ========================================
 ) else (
     echo.

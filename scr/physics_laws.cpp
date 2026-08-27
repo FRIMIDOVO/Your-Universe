@@ -2,6 +2,8 @@
 #include "physics_laws.h"
 #include <iostream>
 
+float custom_pow(float x, float n);
+
 namespace Laws {
     void inertia(std::vector<Particle>& particles, const PhysicsConfig& physics) {
         for (Particle& p : particles) {
@@ -18,7 +20,7 @@ namespace Laws {
                     
                     Vec2 diff = p2.get_position() - p1.get_position();
                     float dist = diff.norm() + physics.softening;
-                    float force = physics.G * p1.get_mass() * p2.get_mass() / (dist * dist);
+                    float force = physics.G * p1.get_mass() * p2.get_mass() / custom_pow(dist, physics.gravity_degree);
                     
                     Vec2 accel = diff * (force / p1.get_mass() / dist);
                     p1.add_velocity(accel * physics.dt);
@@ -30,6 +32,7 @@ namespace Laws {
         }
     }
 
+    // Обычные абсолютно упругие границы мира
     void bounce(std::vector<Particle>& particles, const SpaceConfig& space) {
         for (Particle& p : particles) {
             Vec2 pos = p.get_position();
@@ -54,6 +57,8 @@ namespace Laws {
         }
     }
 
+    // Переодические границы мира (тор)
+    // Надо подстраивать гравитацию и многое другое!
     void periodic(std::vector<Particle>& particles, const SpaceConfig& space) {
         float min_bound = space.min_bound;
         float max_bound = space.max_bound;
@@ -78,33 +83,29 @@ namespace Laws {
         }
     }
 
-    // Внедряем пространственную сетку + правильную физику столкновений
+    // Используем пространственную сетку
     void elastic(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid) {
         
-        // Проходим по всем частицам, используя ИНДЕКС i
+        // Проходим по всем частицам, используя индекс i
         for (size_t i = 0; i < particles.size(); ++i) {
             Particle& p1 = particles[i];
             
-            // 1. BROAD-PHASE: Получаем все гексы, которые задевает эта частица
+            // Получаем все гексы, которые задевает эта частица
             std::vector<Hex> intersecting_hexes = hex_grid.get_intersecting_hexes(p1.get_position(), p1.radius());
 
             for (const Hex& hex : intersecting_hexes) {
-                // 2. Получаем КОНСТАНТНУЮ ссылку на вектор индексов (0 копий памяти!)
+                // Константная ссылка на вектор индексов
                 const std::vector<size_t>& indices = hex_grid.get_indices_hex(hex);
 
                 for (size_t idx : indices) {
-                    // 3. 🔑 КЛЮЧЕВАЯ ОПТИМИЗАЦИЯ:
-                    // Это условие полностью заменяет цикл "for (size_t j = i + 1; ...)"
-                    // Оно гарантирует, что мы не сравниваем частицу саму с собой (idx == i)
-                    // и что каждая пара (p1, p2) обрабатывается РОВНО ОДИН РАЗ.
                     if (idx <= i) {
                         continue;
                     }
 
-                    // 4. МГНОВЕННЫЙ доступ ко второй частице по индексу (O(1))
+                    // Доступ ко второй частице по индексу (O(1))
                     Particle& p2 = particles[idx];
 
-                    // --- 5. NARROW-PHASE: Твоя правильная физика столкновений ---
+                    // Столкновения
                     Vec2 diff = p2.get_position() - p1.get_position();
                     float dist_sq = diff.norm_sq();
                     float min_dist = p1.radius() + p2.radius();
@@ -117,7 +118,6 @@ namespace Laws {
                         float m2 = p2.get_mass();
                         float total_mass = m1 + m2;
                         
-                        // 5.1. РАЗДЕЛЕНИЕ ПЕРЕКРЫТИЯ ПРОПОРЦИОНАЛЬНО МАССЕ
                         float overlap = min_dist - dist;
                         float overlap1 = overlap * (m2 / total_mass); 
                         float overlap2 = overlap * (m1 / total_mass); 
@@ -125,7 +125,7 @@ namespace Laws {
                         p1.set_position(p1.get_position() - normal * overlap1);
                         p2.set_position(p2.get_position() + normal * overlap2);
                         
-                        // 5.2. ИМПУЛЬС С УЧЕТОМ УПРУГОСТИ
+                        // Импульс с учётом упругости
                         Vec2 rel_vel = p1.get_velocity() - p2.get_velocity();
                         float rel_vel_norm = rel_vel.x * normal.x + rel_vel.y * normal.y;
                         
@@ -135,13 +135,12 @@ namespace Laws {
                             p2.add_velocity(normal * (impulse / m2));
                         }
                     }
-                    // --- КОНЕЦ ФИЗИКИ ---
                 }
             }
         }
     }
 
-    // Внедряем пространственную сетку для трения О(N*k)
+    // Используем пространственную сетку для трения О(N)
     void friction(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid) {
         for (size_t i = 0; i < particles.size(); ++i) {
             Particle& p1 = particles[i];
@@ -170,7 +169,7 @@ namespace Laws {
                         float rel_vel_norm = rel_vel.x * normal.x + rel_vel.y * normal.y;
                         Vec2 rel_vel_tang = rel_vel - normal * rel_vel_norm;
                         
-                        // === ПРОСТОЕ ТРЕНИЕ (с учётом массы) ===
+                        // === Трение ===
                         float damping = 1.0f - physics.K_friction * physics.dt * 30.0f;
                         if (damping < 0) damping = 0;
                         
@@ -183,6 +182,8 @@ namespace Laws {
         }
     }
 
+
+    // Типа липкость, но пока фигово. Надо продумать.
     void stickiness(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid) {
         if (physics.F_stickiness == 0.0f) return;
 
@@ -229,4 +230,21 @@ namespace Laws {
         }
     }
 
+}
+
+float custom_pow(float x, float n) {
+    if (n == 1.0f) { return x; }
+    else if (n == 2.0) { return x * x; }
+    else if (n == 3.0) { return x * x * x; }
+    else if (n == 4.0) { return x * x * x * x; }
+    else if (n == 5.0) { return x * x * x * x * x; }
+    else if (n == 6.0) { return x * x * x * x * x * x; }
+    else if (n == 7.0) { return x * x * x * x * x * x * x; }
+    else if (n == 8.0) { return x * x * x * x * x * x * x * x; }
+    else if (n == 9.0) { return x * x * x * x * x * x * x * x * x; }
+    else if (n == 10.0) { return x * x * x * x * x * x * x * x * x * x; }
+    else if (n == 0.5) { return std::sqrt(x); }
+    else if (n == 0.0) { return 1; }
+    else if (n < 0) { return 1 / custom_pow(x, -n); }
+    else { return pow(x, n); }
 }

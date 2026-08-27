@@ -1,6 +1,7 @@
 #pragma once
 
 #define VISUALIZER_FIELDS \
+    FIELD(record) \
     FIELD(width) \
     FIELD(height) \
     FIELD(width_texture) \
@@ -18,6 +19,7 @@
 
 #define PHYSICS_FIELDS \
     FIELD(G) \
+    FIELD(gravity_degree) \
     FIELD(dt) \
     FIELD(softening) \
     FIELD(K_elasticity) \
@@ -27,6 +29,7 @@
 
 
 struct VisualizerConfig {
+    bool record = false;
     int width = 800;
     int height = 800;
     int width_texture = 800;
@@ -47,6 +50,7 @@ struct SpaceConfig {
 struct PhysicsConfig {
     // Базовые параметры
     float G = 1.0;
+    float gravity_degree = 2.0f;
     float dt = 0.001f;
     float softening = 0.001f;
 
