@@ -32,7 +32,7 @@ int main() {
     // ===== Спавн частиц =====
 
     // spawn_rotating_cluster(engine, Vec2(0,0), 1000, 3.0f, 10.0f, 100.0f);
-    populate(engine, space, 1000);
+    populate(engine, space, 5000);
 
     // engine.add_particle(Particle::random_particle(space)); // Создание партикла с рандомными параметрами
     

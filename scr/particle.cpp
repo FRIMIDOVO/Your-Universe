@@ -6,7 +6,7 @@ Particle Particle::random_particle(const SpaceConfig& space) {
     static std::mt19937 gen(rd());
     
     std::uniform_real_distribution<float> pos_dist(space.min_bound, space.max_bound);
-    std::uniform_real_distribution<float> vel_dist(-50.0f, 50.0f);
+    std::uniform_real_distribution<float> vel_dist(0.0f, 0.0f);
     std::uniform_real_distribution<float> mass_dist(2.0f, 7.0f);
 
     Vec2 position{pos_dist(gen), pos_dist(gen)};

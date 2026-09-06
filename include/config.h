@@ -11,7 +11,10 @@
     FIELD(max_speed_color) \
     FIELD(arrow_size) \
     FIELD(arrow_angle) \
-    FIELD(show_hex_cells)
+    FIELD(show_hex_cells) \
+    FIELD(show_gravity_field) \
+    FIELD(gradient_threshold) \
+    FIELD(gradient_scale)
 
 #define SPACE_FIELDS \
     FIELD(min_bound) \
@@ -19,9 +22,7 @@
 
 #define PHYSICS_FIELDS \
     FIELD(G) \
-    FIELD(gravity_degree) \
     FIELD(dt) \
-    FIELD(softening) \
     FIELD(K_elasticity) \
     FIELD(F_stickiness) \
     FIELD(K_friction) \
@@ -36,23 +37,24 @@ struct VisualizerConfig {
     int height_texture = 800;
     bool show_velocity_vec = true;
     float vector_scale = 0.5f;
-    float max_speed_color = 10.0f;
+    float max_speed_color = 25.0f;
     float arrow_size = 0.2f;
     float arrow_angle = 0.4f;
     bool show_hex_cells = true;
+    bool show_gravity_field = true;
+    float gradient_threshold = 0.01f;
+    float gradient_scale = 0.01f;
 };
 
 struct SpaceConfig {
-    float min_bound = -10.0f;
-    float max_bound = 10.0f;
+    float min_bound = -100.0f;
+    float max_bound = 100.0f;
 };
 
 struct PhysicsConfig {
     // Базовые параметры
-    float G = 1.0;
-    float gravity_degree = 2.0f;
+    float G = 10.0;
     float dt = 0.001f;
-    float softening = 0.001f;
 
     // Упругость
     float K_elasticity = 0.5f;

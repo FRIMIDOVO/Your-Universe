@@ -35,6 +35,7 @@ private:
     void draw_velocity_vector(const Particle& p);
     void draw_particle(const Particle& p);
     void draw_hex_grid();
+    void draw_gravity_field();
     void handle_events();
     void update_view();
 };

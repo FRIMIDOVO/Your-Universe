@@ -2,8 +2,6 @@
 #include "physics_laws.h"
 #include <iostream>
 
-float custom_pow(float x, float n);
-
 namespace Laws {
     void inertia(std::vector<Particle>& particles, const PhysicsConfig& physics) {
         for (Particle& p : particles) {
@@ -11,24 +9,21 @@ namespace Laws {
         }
     }
 
-    void gravity(std::vector<Particle>& particles, const PhysicsConfig& physics) {
-        if (physics.G) {
-            for (size_t i = 0; i < particles.size(); ++i) {
-                for (size_t j = i + 1; j < particles.size(); ++j) {
-                    auto& p1 = particles[i];
-                    auto& p2 = particles[j];
-                    
-                    Vec2 diff = p2.get_position() - p1.get_position();
-                    float dist = diff.norm() + physics.softening;
-                    float force = physics.G * p1.get_mass() * p2.get_mass() / custom_pow(dist, physics.gravity_degree);
-                    
-                    Vec2 accel = diff * (force / p1.get_mass() / dist);
-                    p1.add_velocity(accel * physics.dt);
-                    
-                    accel = diff * (-force / p2.get_mass() / dist);
-                    p2.add_velocity(accel * physics.dt);
-                }
-            }
+    // Гравитация с использованием гравитационного поля
+    void gravity(std::vector<Particle>& particles, GravityField& gravity_field, const PhysicsConfig& physics) {
+        if (!physics.G) return;
+
+        gravity_field.clear();
+
+        for (const auto& p : particles) {
+            gravity_field.distribute_mass(p.get_position(), p.get_mass());
+        }
+
+        gravity_field.relax_potentials(100);
+
+        for (auto& p : particles) {
+            Vec2 accel = gravity_field.calculate_acceleration(p.get_position());
+            p.add_velocity(accel * physics.dt);
         }
     }
 
@@ -182,7 +177,6 @@ namespace Laws {
         }
     }
 
-
     // Типа липкость, но пока фигово. Надо продумать.
     void stickiness(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid) {
         if (physics.F_stickiness == 0.0f) return;
@@ -230,21 +224,4 @@ namespace Laws {
         }
     }
 
-}
-
-float custom_pow(float x, float n) {
-    if (n == 1.0f) { return x; }
-    else if (n == 2.0) { return x * x; }
-    else if (n == 3.0) { return x * x * x; }
-    else if (n == 4.0) { return x * x * x * x; }
-    else if (n == 5.0) { return x * x * x * x * x; }
-    else if (n == 6.0) { return x * x * x * x * x * x; }
-    else if (n == 7.0) { return x * x * x * x * x * x * x; }
-    else if (n == 8.0) { return x * x * x * x * x * x * x * x; }
-    else if (n == 9.0) { return x * x * x * x * x * x * x * x * x; }
-    else if (n == 10.0) { return x * x * x * x * x * x * x * x * x * x; }
-    else if (n == 0.5) { return std::sqrt(x); }
-    else if (n == 0.0) { return 1; }
-    else if (n < 0) { return 1 / custom_pow(x, -n); }
-    else { return pow(x, n); }
 }

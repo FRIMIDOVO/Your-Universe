@@ -62,6 +62,93 @@ void Visualizer::draw_hex_grid() {
     }
 }
 
+void Visualizer::draw_gravity_field() {
+    const auto& gravity_field = engine.get_gravity_field();
+    
+    float min_bound = engine.get_space().min_bound;
+    float max_bound = engine.get_space().max_bound;
+    float world_size = max_bound - min_bound;
+
+    // Размер блока
+    const float BLOCK_SIZE = 1.0f; 
+    
+    int cols = static_cast<int>(std::ceil(world_size / BLOCK_SIZE));
+    int rows = static_cast<int>(std::ceil(world_size / BLOCK_SIZE));
+
+    sf::VertexArray va(sf::PrimitiveType::Triangles, cols * rows * 6);
+    size_t vertex_idx = 0;
+
+    const float GRADIENT_THRESHOLD = viz.gradient_threshold;
+    const float GRADIENT_SCALE = viz.gradient_scale;
+
+    // Цвет поля
+    const uint8_t BASE_R = 0;
+    const uint8_t BASE_G = 220;
+    const uint8_t BASE_B = 255;
+
+    for (int y = 0; y < rows; ++y) {
+        for (int x = 0; x < cols; ++x) {
+            float world_x = min_bound + (x + 0.5f) * BLOCK_SIZE;
+            float world_y = min_bound + (y + 0.5f) * BLOCK_SIZE;
+            
+            // Скип пустых зон для оптимизации
+            float phi_center = gravity_field.get_potential(Vec2(world_x, world_y));
+            if (std::abs(phi_center) < GRADIENT_THRESHOLD * 0.1f) {
+                float x0 = min_bound + x * BLOCK_SIZE;
+                float y0 = min_bound + y * BLOCK_SIZE;
+                sf::Vector2f p0(x0, y0), p1(x0 + BLOCK_SIZE, y0), p2(x0, y0 + BLOCK_SIZE), p3(x0 + BLOCK_SIZE, y0 + BLOCK_SIZE);
+                sf::Color transparent(0, 0, 0, 0);
+                va[vertex_idx + 0] = sf::Vertex(p0, transparent);
+                va[vertex_idx + 1] = sf::Vertex(p1, transparent);
+                va[vertex_idx + 2] = sf::Vertex(p2, transparent);
+                va[vertex_idx + 3] = sf::Vertex(p1, transparent);
+                va[vertex_idx + 4] = sf::Vertex(p3, transparent);
+                va[vertex_idx + 5] = sf::Vertex(p2, transparent);
+                vertex_idx += 6;
+                continue;
+            }
+            
+            // Считаем градиент только там, где поле реально существует
+            float phi_left  = gravity_field.get_potential(Vec2(world_x - BLOCK_SIZE, world_y));
+            float phi_right = gravity_field.get_potential(Vec2(world_x + BLOCK_SIZE, world_y));
+            float phi_up    = gravity_field.get_potential(Vec2(world_x, world_y - BLOCK_SIZE));
+            float phi_down  = gravity_field.get_potential(Vec2(world_x, world_y + BLOCK_SIZE));
+            
+            float grad_x = (phi_right - phi_left) / (2.0f * BLOCK_SIZE);
+            float grad_y = (phi_down - phi_up) / (2.0f * BLOCK_SIZE);
+            float grad_magnitude = std::sqrt(grad_x * grad_x + grad_y * grad_y);
+            
+            // Сырая интенсивность (0.0 ... 1.0)
+            float raw_intensity = grad_magnitude * GRADIENT_SCALE;
+            raw_intensity = std::clamp(raw_intensity, 0.0f, 1.0f);
+            
+            // Корень для плавности
+            float smooth_factor = std::sqrt(raw_intensity); 
+            
+            // Слегка приглушаем и яркость цвета к краям для эффекта объёмного свечения
+            uint8_t r = static_cast<uint8_t>(BASE_R * smooth_factor);
+            uint8_t g = static_cast<uint8_t>(BASE_G * smooth_factor);
+            uint8_t b = static_cast<uint8_t>(BASE_B * smooth_factor);
+            uint8_t a = static_cast<uint8_t>(255.0f * smooth_factor); 
+
+            sf::Color block_color(r, g, b, a);
+
+            float x0 = min_bound + x * BLOCK_SIZE;
+            float y0 = min_bound + y * BLOCK_SIZE;
+            sf::Vector2f p0(x0, y0), p1(x0 + BLOCK_SIZE, y0), p2(x0, y0 + BLOCK_SIZE), p3(x0 + BLOCK_SIZE, y0 + BLOCK_SIZE);
+
+            va[vertex_idx + 0] = sf::Vertex(p0, block_color);
+            va[vertex_idx + 1] = sf::Vertex(p1, block_color);
+            va[vertex_idx + 2] = sf::Vertex(p2, block_color);
+            va[vertex_idx + 3] = sf::Vertex(p1, block_color);
+            va[vertex_idx + 4] = sf::Vertex(p3, block_color);
+            va[vertex_idx + 5] = sf::Vertex(p2, block_color);
+            vertex_idx += 6;
+        }
+    }
+    render_texture.draw(va);
+}
+
 void Visualizer::draw_particle(const Particle& p) {
     Vec2 pos = p.get_position();
     float radius = p.radius();
@@ -145,6 +232,7 @@ void Visualizer::handle_events() {
 }
 
 void Visualizer::draw_all() {
+    if (viz.show_gravity_field) draw_gravity_field();
     if (viz.show_hex_cells) draw_hex_grid();
     for (const auto& p : particles) { 
         draw_particle(p);
