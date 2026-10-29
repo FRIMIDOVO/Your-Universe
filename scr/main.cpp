@@ -1,180 +1,242 @@
 #include <chrono>
 #include <iostream>
 #include "physics.h"
-#include "visualizer.h"
-#include "gif_recorder.h"
-#include "frame_saver.h"
+#include <filesystem>
+#include "opencl_manager.h"
 #include "config_loader.h"
-#include "vec2.h"
+#include "galaxy_saver.h"
+#include "visualizer.h"
+#include "vec3.h"
+#include <memory>
+#include <conio.h>
 
-
-void smash(PhysicsEngine& engine);
-void populate(PhysicsEngine& engine, SpaceConfig& space, long long N);
-void double_system(PhysicsEngine& engine);
-void triple_system(PhysicsEngine& engine);
-void spawn_rotating_cluster(PhysicsEngine& engine, Vec2 center, int count, float radius, float mass, float rotation_speed);
-
+#define M_PI 3.14159265358979323846
 
 int main() {
+    // Иницилизация конфигов
     PhysicsConfig physics;
     SpaceConfig space;
     VisualizerConfig viz;
     
-    ConfigLoader::load("space_config.txt", space);
-    ConfigLoader::load("physics_config.txt", physics);
-    ConfigLoader::load("viz_config.txt", viz);
+    // Подгрузка параметров конфигов из фйлов
+    ConfigLoader::load("configs/space_config.txt", space);
+    ConfigLoader::load("configs/physics_config.txt", physics);
+    ConfigLoader::load("configs/viz_config.txt", viz);
 
-    PhysicsEngine engine(physics, space);
-    Visualizer visualizer(engine, viz);
-    //GifRecorder recorder("record.gif", viz);
-    std::filesystem::remove_all("frames");
+    // OpenCl для GPU
+    OpenCLManager clManager;
+
+    // Сам движок
+    PhysicsEngine engine(physics, space, clManager);
+
+    // Визуализатор
+    std::unique_ptr<Visualizer> visualizer = nullptr;
+    if (viz.render) visualizer = std::make_unique<Visualizer>(500000);
+
 
     // ===== Спавн частиц =====
 
-    // spawn_rotating_cluster(engine, Vec2(0,0), 1000, 3.0f, 10.0f, 100.0f);
-    populate(engine, space, 5000);
+    auto spawn = [&] (int p_count, int dm_p_count, float omega) {
 
-    // engine.add_particle(Particle::random_particle(space)); // Создание партикла с рандомными параметрами
-    
-    /* engine.add_particle(Particle(
-        9999, // id
-        Vec2(0,0) , // position
-        Vec2(0,0) , // velocity
-        5 // mass
-    )) */// Партикл с заданными параметрами
+        // ===== Материя =====
+        std::vector<Particle> b_particles;
 
-    // ===== =====
+        for (int i = 0; i < p_count; ++i) {
+            b_particles.push_back(Particle::random_particle(
+                &space,
+                std::nullopt,
+                Vec3(),         // без температуры
+                0.8f,           // mass
+                false           // флаг тм (выключен)
+            ));
+        }
 
-    std::cout << "Particles: " << engine.get_particles().size() << "\n";
+        // Задаём вращение
+        for (auto& b : b_particles) {
+            Vec3 r = b.get_position();
+            Vec3 v_rot(-omega * r.y, omega * r.x, 0.0f);
+
+            b.add_velocity(v_rot);
+            engine.add_particle(b);
+        }
+
+
+        // ===== ТМ =====
+        std::vector<Particle> dm_particles;
+
+        for (int i = 0; i < dm_p_count; ++i) {
+            dm_particles.push_back(Particle::random_particle(
+                &space,
+                std::nullopt,
+                Vec3(),         // без температуры
+                1.6f,           // mass
+                true            // флаг тм (включен)
+            ));
+        }
+
+        // Задаём вращение
+        for (auto& dm : dm_particles) {
+            Vec3 r = dm.get_position();
+            Vec3 v_rot(-omega * r.y, omega * r.x, 0.0f);
+
+            dm.add_velocity(v_rot);
+            engine.add_particle(dm);
+        }
+
+    };
+
+    auto load_or_spawn = [&](int p_count, int dm_p_count, float omega, const std::filesystem::path& save = {}) {
+        std::filesystem::path path_to_load;
+
+        // 1. Если передан конкретный путь — грузим его
+        if (!save.empty()) {
+            if (std::filesystem::exists(save)) {
+                path_to_load = save;
+            }
+        }
+        // 2. Иначе — ищем последний сейв в saves/test_simulations/
+        else {
+            const std::filesystem::path search_dir = "saves/test_simulations/";
+            if (std::filesystem::exists(search_dir)) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(search_dir)) {
+                    if (!entry.is_regular_file()) continue;
+                    const auto& p = entry.path();
+                    if (p.extension() != ".csv") continue;
+                    if (p.filename().string().rfind("galaxy_", 0) != 0) continue;
+
+                    if (path_to_load.empty() || p.string() > path_to_load.string()) {
+                        path_to_load = p;
+                    }
+                }
+            }
+        }
+
+        // 3. Если нашли — грузим, иначе — спавним
+        if (!path_to_load.empty() && std::filesystem::exists(path_to_load)) {
+            auto [loaded_time, loaded_particles] = GalaxySaver::load(path_to_load.string());
+
+            engine.clear_particles();
+            engine.set_time(loaded_time);
+            for (auto& p : loaded_particles) {
+                engine.add_particle(p);
+            }
+
+        } else {
+            engine.clear_particles();
+            engine.set_time(0.0f);
+            spawn(p_count, dm_p_count, omega);
+        }
+    };
+
+    auto calculate_cycle = [&] (int frames, std::string save_directory) {
+        // Info
+        std::cout << "Particles: " << engine.get_particles().size() << "\n";
+
+        if (physics.record) GalaxySaver::save(save_directory, engine.get_particles(), engine.get_time());
+
+        // === Main cycle ===
+        int frame = 0;
+        int last_frame = 0;
+
+        auto t0 = std::chrono::high_resolution_clock::now();
+        auto t1 = std::chrono::high_resolution_clock::now();
+        auto t2 = std::chrono::high_resolution_clock::now();
+        auto to_ms = [](auto start, auto end) { return std::chrono::duration<double, std::milli>(end - start).count(); };
+
+        auto last_time = std::chrono::steady_clock::now();
+        auto curr_time = std::chrono::steady_clock::now();
+
+        while (frames != frame) {
+
+            // Обработка нажатий кнопок
+            if (_kbhit()) {
+                char ch = _getch();
+                if (ch == 27) { // 27 — это ASCII-код клавиши ESC
+                    std::cout << "\nFinish program with save progress? (y/n): ";
+                    char answ;
+                    std::cin >> answ;
+                    
+                    switch (answ) {
+                        case 'y': 
+                        case 'Y':   break; // Выходит из switch, код пойдет дальше к break внешнего цикла
+                        case 'n':
+                        case 'N':
+                        default:    continue; // Переходит на следующую итерацию ВНЕШНЕГО цикла
+                    }
+                    break; // Этот break сработает, только если мы выбрали 'y' и вышли из switch
+                } else if (ch == 115) { 
+                    GalaxySaver::save(save_directory, engine.get_particles(), engine.get_time());
+                } else if (ch == 'p' || ch == 'P') {
+                    physics.calculate = !physics.calculate;
+                } else if (ch == 'r' || ch == 'R') {
+                    viz.render = !viz.render;
+                }
+
+            }
+
+            t0 = std::chrono::high_resolution_clock::now();
+            
+            if (physics.calculate) engine.step();
+            t1 = std::chrono::high_resolution_clock::now();
+
+            if (viz.render) visualizer->draw(
+                engine.get_posX(), engine.get_posY(), engine.get_posZ(),
+                engine.get_dark()
+            );
+            t2 = std::chrono::high_resolution_clock::now();
+
+            // Вывод времени каждого этапа
+            std::cout << "Frame: " << frame << " | "
+                    << "Physics: " << to_ms(t0, t1) << " ms | " 
+                    << "Render: " << to_ms(t1, t2) << " ms | "
+                    << "Total: " << to_ms(t0, t2) << " ms" 
+                    << std::endl;
+            ++frame;
+
+            curr_time = std::chrono::steady_clock::now();
+
+            if (frame - last_frame > 500 && physics.record) {
+                last_frame = frame;
+                GalaxySaver::save(save_directory, engine.get_particles(), engine.get_time());
+            }
+        }
+
+        GalaxySaver::save(save_directory, engine.get_particles(), engine.get_time());
+
+        // Вывод инфы
+        std::cout << "Calculated " << frame << " frames." << std::endl;
+    };
+
+    /*
+    // Для анализа с разными параметрами
+    float elastic_range[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+    float omega_range[]   = {0.0f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f};
+
+    for (float& elastic : elastic_range) {
+        for (float& omega : omega_range) {
+            physics.K_elasticity = elastic;
+            engine.clear_particles();
+            engine.set_time(0.0f);
+            spawn(omega);
+            std::string save_dir = std::to_string(elastic) + "_" + std::to_string(omega);
+            calculate_cycle(5000, save_dir);
+        }
+    }
+    */
+
+    // ====================== 
 
     int count_frames;
-    std::cout << "Enter count frames for calculation: ";
+    std::cout << "Enter count frames for calculation(-1 to infinity): ";
     std::cin >> count_frames;
     std::cout << std::endl;
 
-    int frame = 0;
-    while (visualizer.is_open() && count_frames != frame) {
-        auto t0 = std::chrono::high_resolution_clock::now();
-        
-        engine.step();
-        auto t1 = std::chrono::high_resolution_clock::now();
-        
-        visualizer.render();
-        auto t2 = std::chrono::high_resolution_clock::now();
-        
-        if (viz.record)
-            FrameSaver::save_frame(visualizer.get_texture(), frame);
-            
-        auto t3 = std::chrono::high_resolution_clock::now();
-        
-        // Вывод времени каждого этапа
-        auto to_ms = [](auto start, auto end) {
-            return std::chrono::duration<double, std::milli>(end - start).count();
-        };
-        
-        std::cout << "Frame: " << frame << " | ";
-        std::cout << "Physics: " << to_ms(t0, t1) << " ms | "
-                << "Render: " << to_ms(t1, t2) << " ms | "
-                << "Record: " << to_ms(t2, t3) << " ms | "
-                << "Total: " << to_ms(t0, t3) << " ms" << std::endl;
+    load_or_spawn(25'000, 75'000, 8.0f, "");
+    engine.update_dod();
+    calculate_cycle(count_frames, "test_simulations/");
 
-        ++frame;
-    }
-
-    ConfigLoader::save("space_config.txt", space);
-    ConfigLoader::save("physics_config.txt", physics);
-    ConfigLoader::save("viz_config.txt", viz);
-    std::cout << "Generated " << frame << " frames.";
-    std::cout << "View saved frames `bin/frames/` and encode their with encode_video.bat or encode_gif.bat";
     std::cin.get();
     std::cin.get();
 
-        return 0;
-}
-
-
-// Генерация частиц
-void smash(PhysicsEngine& engine) {
-    engine.add_particle(Particle(
-        1,
-        Vec2(-1.0, 0.0),
-        Vec2(5.0, 0.2),
-        1.0
-    ));
-    engine.add_particle(Particle(
-        2,
-        Vec2(1.0, 0.0),
-        Vec2(0.0, 0.0),
-        5.0
-    ));
-}
-
-void populate(PhysicsEngine& engine, SpaceConfig& space, long long N) {
-    for (long long i = 0; i < N; i++)
-        engine.add_particle(Particle::random_particle(space));
-}
-
-void double_system(PhysicsEngine& engine) {
-    engine.add_particle(Particle(
-        1,
-        Vec2(-3.0f, 0.0f),
-        Vec2(0.0f, -0.35f),
-        8.0f
-    ));
-    engine.add_particle(Particle(
-        2,
-        Vec2(7.0f, 0.0f),
-        Vec2(0.0f, 0.93f),
-        3.0f
-    ));
-}
-
-void triple_system(PhysicsEngine& engine) {
-    const float R = 4.0f;
-    const float m = 3.0f;
-    const float v = 1.15f;
-    const float sqrt3 = std::sqrt(3.0f);
-    const float h = R * sqrt3 / 2.0f;
-    engine.add_particle(Particle(
-        1,
-        Vec2(R, 0.0f),
-        Vec2(0.0f, v),
-        m
-    ));
-    engine.add_particle(Particle(
-        2,
-        Vec2(-R / 2.0f, h),
-        Vec2(-v * sqrt3 / 2.0f, -v / 2.0f),
-        m
-    ));
-    engine.add_particle(Particle(
-        3,
-        Vec2(-R / 2.0f, -h),
-        Vec2(v * sqrt3 / 2.0f, -v / 2.0f),
-        m
-    ));
-}
-
-void spawn_rotating_cluster(PhysicsEngine& engine, Vec2 center, int count, float radius, float mass, float rotation_speed) {
-    for (int i = 0; i < count; ++i) {
-        // Случайное положение внутри круга
-        float angle = static_cast<float>(rand()) / RAND_MAX * 2.0f * 3.14159f;
-        float r = radius * std::sqrt(static_cast<float>(rand()) / RAND_MAX);  // равномерно по площади
-        float x = center.x + r * std::cos(angle);
-        float y = center.y + r * std::sin(angle);
-        
-        // Скорость = вращение вокруг центра + случайный разброс
-        float v_rot = rotation_speed * r;
-        float vx = -v_rot * std::sin(angle) + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
-        float vy = v_rot * std::cos(angle) + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
-        
-        float m = mass * (0.5f + static_cast<float>(rand()) / RAND_MAX * 0.5f);
-        
-        engine.add_particle(Particle(
-            1000 + i,
-            Vec2(x, y),
-            Vec2(vx, vy),
-            m
-        ));
-    }
+    return 0;
 }

@@ -1,3 +1,0 @@
-# Space Configuration
-min_bound -100
-max_bound 100

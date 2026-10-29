@@ -1,68 +1,72 @@
 #pragma once
 
 #define VISUALIZER_FIELDS \
-    FIELD(record) \
+    FIELD(render) \
     FIELD(width) \
-    FIELD(height) \
-    FIELD(width_texture) \
-    FIELD(height_texture) \
-    FIELD(show_velocity_vec) \
-    FIELD(vector_scale) \
-    FIELD(max_speed_color) \
-    FIELD(arrow_size) \
-    FIELD(arrow_angle) \
-    FIELD(show_hex_cells) \
-    FIELD(show_gravity_field) \
-    FIELD(gradient_threshold) \
-    FIELD(gradient_scale)
+    FIELD(height)
 
 #define SPACE_FIELDS \
+    FIELD(bounds) \
     FIELD(min_bound) \
     FIELD(max_bound)
 
 #define PHYSICS_FIELDS \
+    FIELD(calculate) \
+    FIELD(record) \
+    FIELD(theta) \
+    FIELD(softening) \
     FIELD(G) \
     FIELD(dt) \
     FIELD(K_elasticity) \
-    FIELD(F_stickiness) \
-    FIELD(K_friction) \
-    FIELD(contact_distance)
+    FIELD(K_stiffness) \
+    FIELD(h) \
+    FIELD(rest_density) \
+    FIELD(gamma) \
+    FIELD(alpha) \
+    FIELD(cs)
 
 
 struct VisualizerConfig {
-    bool record = false;
+    bool render = true;
     int width = 800;
     int height = 800;
-    int width_texture = 800;
-    int height_texture = 800;
-    bool show_velocity_vec = true;
-    float vector_scale = 0.5f;
-    float max_speed_color = 25.0f;
-    float arrow_size = 0.2f;
-    float arrow_angle = 0.4f;
-    bool show_hex_cells = true;
-    bool show_gravity_field = true;
-    float gradient_threshold = 0.01f;
-    float gradient_scale = 0.01f;
 };
 
 struct SpaceConfig {
-    float min_bound = -100.0f;
-    float max_bound = 100.0f;
+    bool bounds = false;
+    float min_bound = -15.0f;
+    float max_bound = 15.0f;
 };
 
 struct PhysicsConfig {
+    PhysicsConfig() { update(); }
+
     // Базовые параметры
-    float G = 10.0;
-    float dt = 0.001f;
+    bool calculate = true;
+    bool record = true;
+    float theta = 0.01f;
+    float softening = 1.0f;
+    float softening_sq;
+    float G = 1.0;
+    float dt = 0.005f;
 
     // Упругость
     float K_elasticity = 0.5f;
 
-    // Липкость
-    float F_stickiness = 1.0f;
-    
-    // Трение
-    float K_friction = 0.5f;
-    float contact_distance = 1.01f;
+    // SPH
+    float K_stiffness = 1.0f;
+    float h = 0.1f;
+    float rest_density = 0.001;
+    float gamma = 1.33f;
+    float alpha = 5.0f;
+    float cs = 1.0f;
+
+    float h2, h8;
+
+    void update() {
+        h2 = h * h;
+        h8 = h2 * h2 * h2 * h2;
+
+        softening_sq = softening * softening;
+    }
 };

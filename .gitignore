@@ -1,0 +1,17 @@
+.vscode/
+
+Симуляции/
+bin/saves/
+bin/frames/
+trash/
+
+
+*.txt
+*.rar
+*.exe
+*.gif
+*.mp4
+*.lnk
+bin/universe.exe
+*.zip
+__pycache__/analyze.cpython-313.pyc
