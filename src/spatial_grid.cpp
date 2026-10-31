@@ -6,6 +6,11 @@ SpatialGrid::SpatialGrid(float cell_size)
 {
 }
 
+void SpatialGrid::set_cell_size(float cs) {
+    cell_size_ = cs;
+    inv_cell_size_ = 1.0f / cell_size_;
+}
+
 // Быстрая хэш-функция
 uint32_t SpatialGrid::hash_cell(const Cell& c) const {
     uint32_t hash = (c.x * 73856093) ^ (c.y * 19349663) ^ (c.z * 83492791);

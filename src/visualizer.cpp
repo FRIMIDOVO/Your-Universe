@@ -6,8 +6,8 @@ void Renderer::init(size_t max_cap) {
     max_particles_ = max_cap;
 
     particle_shader_ = LoadShader(
-        "shaders/particle.vs",
-        "shaders/particle.fs"
+        "bin/shaders/particle.vs",
+        "bin/shaders/particle.fs"
     );
 
     packed_data_.resize(max_particles_ * 4);
@@ -103,7 +103,7 @@ template void Renderer::draw<FreeCamera>(
 
 Visualizer::Visualizer(size_t max_particles) : renderer() {
     InitWindow(1000, 1000, "My Universe");
-    SetTargetFPS(60);
+    SetTargetFPS(200);
 
     renderer.init(max_particles);
 }

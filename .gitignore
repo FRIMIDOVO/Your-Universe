@@ -4,6 +4,7 @@
 bin/saves/
 bin/frames/
 trash/
+build/
 
 
 *.txt
@@ -13,5 +14,6 @@ trash/
 *.mp4
 *.lnk
 bin/universe.exe
+pybind11/
 *.zip
 __pycache__/analyze.cpython-313.pyc

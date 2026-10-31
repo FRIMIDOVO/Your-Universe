@@ -44,7 +44,7 @@ struct PhysicsConfig {
     // Базовые параметры
     bool calculate = true;
     bool record = true;
-    float theta = 0.01f;
+    float theta = 0.0f;
     float softening = 1.0f;
     float softening_sq;
     float G = 1.0;

@@ -17,6 +17,8 @@ class SpatialGrid {
 public:
     explicit SpatialGrid(float cell_size);
 
+    void set_cell_size(float cs);
+
     // Строит сетку по текущим позициям
     void build(
         const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,

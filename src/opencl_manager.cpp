@@ -13,7 +13,7 @@ OpenCLManager::OpenCLManager() : platform(nullptr), device(nullptr),
     context(nullptr), queue(nullptr), program(nullptr)
 {
     initialize();
-    loadKernel("kernels/gravity.cl");
+    loadKernel("bin/kernels/gravity.cl");
 }
 
 OpenCLManager::~OpenCLManager() {
