@@ -1,14 +1,26 @@
-import bin.universe_py as universe_api
+from PyQt5.QtWidgets import QApplication
+from bin.universe_py import Universe
+from gui.main_window import MainWindow
+import threading
+import sys
 
-universe = universe_api.Universe()
+def main():
+    universe = Universe()
+    gui = MainWindow()
 
-universe.set_theta(0)
+    gui.update_configs(universe)
 
-universe.spawn_cluster(
-    20000, 1, 0.5, 15, 5,
-    20000, 1, 0.5, 20, 5
-)
+    def unicycle():
+        while True:
+            gui.process_commands(universe)
+            universe.engine_step()
+            universe.render()
 
-while not universe.window_should_close():
-    universe.engine_step()
-    universe.render()
+    uni_thr = threading.Thread(target=unicycle, daemon=True)
+    uni_thr.start()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main()
+    sys.exit(app.exec_())

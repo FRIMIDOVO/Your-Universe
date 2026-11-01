@@ -18,8 +18,8 @@ PhysicsEngine::PhysicsEngine(
 
 void PhysicsEngine::step() {
     // First kick and drift
-    static float dt = physics.dt;
-    static float half_dt = dt * 0.5f;
+    float dt = physics.dt;
+    float half_dt = dt * 0.5f;
     for (size_t i = 0; i < accX.size(); ++i) {
         // Применяем ускорение
         velX[i] += accX[i] * half_dt;

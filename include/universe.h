@@ -15,8 +15,8 @@ public:
     Universe();
     ~Universe() = default;
 
-    void switch_render() { viz.render = !viz.render; }
-    void switch_calculate() { physics.calculate = !physics.calculate; }
+    void switch_render(bool flag);
+    void switch_calculate(bool flag) { physics.calculate = flag; }
 
     void set_dt(float dt) { physics.dt = dt; }
     void set_theta(float th) { physics.theta = th; }
@@ -50,9 +50,6 @@ public:
     void load_cluster(const std::filesystem::path& save = {}) {
         // Для этого надо переписать GalaxySaver
     }
-
-    // Быстрый чистый C++ цикл расчёта симуляции
-    void calculate_cycle(int frames);
 
 private:
     // Конфиги

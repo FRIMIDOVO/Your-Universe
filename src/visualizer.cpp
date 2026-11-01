@@ -55,53 +55,9 @@ Renderer::~Renderer() {
     shutdown();
 }
 
-/*
-template<typename CameraType>
-void Renderer::draw(
-    const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
-    const std::vector<float>& radius,
-    const CameraType& camera
-)
-{
-    int N = static_cast<int>(posX.size());
-    if (N == 0) return;
-
-    // Упаковка
-    for (int i = 0; i < N; ++i) {
-        packed_data_[i * 4 + 0] = posX[i];
-        packed_data_[i * 4 + 1] = posY[i];
-        packed_data_[i * 4 + 2] = posZ[i];
-        packed_data_[i * 4 + 3] = radius[i];
-    }
-
-    // Заливка в VBO
-    rlEnableVertexArray(vao_);
-    rlUpdateVertexBuffer(vbo_, packed_data_.data(), N * 4 * sizeof(float), 0);
-
-    // Рендер
-    BeginMode3D(camera.get_camera());
-    rlEnablePointMode(); // включаем возможность менять размер точек
-    rlDrawVertexArray(0, N); // рисуем частицы одной командой
-    EndMode3D();
-
-    rlDisableVertexArray();
-}
-
-// Явная инстанциация шаблона для двух камер, чтобы линковщик не ругался
-template void Renderer::draw<OrbitCamera>(
-    const std::vector<float>&, const std::vector<float>&, const std::vector<float>&,
-    const std::vector<float>&,
-    const OrbitCamera&
-);
-
-template void Renderer::draw<FreeCamera>(
-    const std::vector<float>&, const std::vector<float>&, const std::vector<float>&,
-    const std::vector<float>&,
-    const FreeCamera&
-);
-*/
-
 Visualizer::Visualizer(size_t max_particles) : renderer() {
+    SetTraceLogLevel(LOG_ERROR);
+
     InitWindow(1000, 1000, "My Universe");
     SetTargetFPS(200);
 
@@ -247,7 +203,7 @@ void FreeCamera::update(float dt) {
     float wheel = GetMouseWheelMove();
     if (wheel != 0) {
         speed += wheel * 100.0f;
-        if (speed < 10.0f) speed = 10.0f;
+        if (speed < 5.0f) speed = 5.0f;
     }
 }
 

@@ -31,7 +31,7 @@ __kernel void calculate_forces_nbody(
 
     // Проходим по всем тайлам
     for (int t = 0; t < N; t += TILE_SIZE) {
-        // 1. Загружаем блок данных в Shared Memory
+        // Загружаем блок данных
         int tid = get_local_id(0);
         int idx = t + tid;
         
@@ -48,10 +48,10 @@ __kernel void calculate_forces_nbody(
             tile_m[tid] = 0.0f;
         }
         
-        // Синхронизация: ждем, пока ВСЕ потоки группы загрузят данные
+        // Синхронизация: ждем, пока потоки группы загрузят данные
         barrier(CLK_LOCAL_MEM_FENCE);
         
-        // 2. Считаем силы с частицами из текущего тайла
+        // Считаем силы с частицами из текущего тайла
         #pragma unroll 8 // Развертывание цикла для скорости
         for (int j = 0; j < TILE_SIZE; j++) {
             int global_j = t + j;
@@ -59,9 +59,9 @@ __kernel void calculate_forces_nbody(
             
             float dx = tile_px[j] - xi;
             float dy = tile_py[j] - yi;
-            float dz = tile_pz[j] - zi; // <-- Добавлено
+            float dz = tile_pz[j] - zi;
             
-            // Формула расстояния теперь 3D
+            // Расстояние
             float dist_sq = dx*dx + dy*dy + dz*dz + softening_sq;
             float inv_dist = native_rsqrt(dist_sq);
             float f = G * tile_m[j] * inv_dist * inv_dist * inv_dist;

@@ -52,12 +52,16 @@ Universe::Universe() :
     viz(),
     engine(physics, space)
 {
-    // Подгрузка параметров конфигов из фйлов
-    ConfigLoader::load("configs/space_config.txt", space);
-    ConfigLoader::load("configs/physics_config.txt", physics);
-    ConfigLoader::load("configs/viz_config.txt", viz);
+}
 
-    if (viz.render) visualizer = std::make_unique<Visualizer>(1'000'000);
+void Universe::switch_render(bool flag) {
+    if (flag && visualizer == nullptr) {
+        visualizer = std::make_unique<Visualizer>(1'000'000);
+    } else if (!flag && visualizer != nullptr) {
+        visualizer = nullptr;
+    }
+    
+    viz.render = flag;
 }
 
 std::pair<size_t, size_t> Universe::get_particle_count() const {
@@ -72,6 +76,15 @@ std::pair<size_t, size_t> Universe::get_particle_count() const {
 }
 
 void Universe::render() {
+    /* 
+    // Пока нет сигнала gui на корректное отображение
+    // Закрываем окно, если требуется
+    if (WindowShouldClose()) {
+        switch_render(false);
+    }
+    */
+
+    // Рендерим, если есть отрисовщик
     if (viz.render && visualizer != nullptr) visualizer->draw(
         engine.get_posX(), engine.get_posY(), engine.get_posZ(),
         engine.get_dark()
@@ -113,50 +126,3 @@ void Universe::spawn_cluster(
 
     engine.update_cell_size();
 }
-
-void Universe::calculate_cycle(int frames) {
-        // Info
-        std::cout << "Particles: " << engine.get_posX().size() << "\n";
-
-        // === Main cycle ===
-        int frame = 1;      // номер кадра
-
-        // Счётчики времени
-        auto t0 = std::chrono::high_resolution_clock::now();
-        auto t1 = std::chrono::high_resolution_clock::now();
-        auto t2 = std::chrono::high_resolution_clock::now();
-        auto to_ms = [](auto start, auto end) { return std::chrono::duration<double, std::milli>(end - start).count(); };
-
-        while (frame != frames) {
-            // Тут думаю вызывать доп методы этого класса для взаимодействия с пользователем
-            /*
-            */
-
-            // Start time
-            t0 = std::chrono::high_resolution_clock::now();
-            
-            // Physics step
-            engine_step();
-            t1 = std::chrono::high_resolution_clock::now();
-
-            // Rendering
-            render();
-            t2 = std::chrono::high_resolution_clock::now();
-
-            // Time cout
-            std::cout 
-                << "Frame: "  << frame << " | "
-                << "Physics: "  << to_ms(t0, t1) << " ms | " 
-                << "Render: "   << to_ms(t1, t2) << " ms | "
-                << "Total: "    << to_ms(t0, t2) << " ms" 
-            << std::endl;
-
-            ++frame;
-        }
-
-        // После расчётного цикла
-        std::cout << "Calculated " << frame << " frames." << std::endl;
-        
-        std::cin.get();
-        std::cin.get();
-    }

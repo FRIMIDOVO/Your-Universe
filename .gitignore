@@ -5,6 +5,7 @@ bin/saves/
 bin/frames/
 trash/
 build/
+dist/
 
 
 *.txt
@@ -17,3 +18,4 @@ bin/universe.exe
 pybind11/
 *.zip
 __pycache__/analyze.cpython-313.pyc
+gui/designs/__pycache__/

@@ -42,12 +42,7 @@ PYBIND11_MODULE(universe_py, m) {
             "engine_reset",
             &Universe::engine_reset
         )
-        .def(
-            "calculate_cycle",
-            &Universe::calculate_cycle,
-            py::arg("frames"),
-            py::call_guard<py::gil_scoped_release>()
-        )
+
         .def(
             "render",
             &Universe::render
