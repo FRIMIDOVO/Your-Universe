@@ -296,146 +296,25 @@ void SPH(
     const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
     const std::vector<float>& velX, const std::vector<float>& velY, const std::vector<float>& velZ,
     const std::vector<float>& mass, const std::vector<uint8_t>& is_dark,
-    const PhysicsConfig& physics, const BarnesHutTree& bh_tree
+    const PhysicsConfig& physics, SPHSolver& sph_solver
 )
 {
-    const int n = static_cast<int>(posX.size());
-    if (n == 0) return;
+    // Если газа нет — выходим
+    if (posX.empty()) return;
 
-    const float h = physics.h;
-    const float h2 = physics.h2;
-    const float h8 = physics.h8;
-
-    if (h <= 0.0f || h2 <= 0.0f || h8 <= 0.0f)
-        return;
-
-    const float pi = 3.14159265358979323846f;
-    const float four_inv_pi_h8 = 4.0f / (pi * h8);
-    const float twfour_inv_pi_h8 = 24.0f / (pi * h8);
-
-    const float rest_density = physics.rest_density;
-    const float gamma = physics.gamma;
-
-    if (rest_density <= 0.0f || gamma <= 0.0f)
-        return;
-
-    // Локальные буферы для промежуточных вычислений (static, чтобы не аллоцировать каждый кадр)
-    static std::vector<float> density;
-    static std::vector<float> pressure;
-    static std::vector<int> neighbors;
-
-    density.assign(n, 0.0f);
-    pressure.assign(n, 0.0f);
-    neighbors.reserve(256);
-
-    // Ядро сглаживания
-    const auto poly = [&](float r2) -> float {
-        if (r2 < 0.0f || r2 >= h2)
-            return 0.0f;
-
-        const float d = h2 - r2;
-        return four_inv_pi_h8 * d * d * d;
-    };
-
-    // Отрицательный градиент ядра
-    const auto pressure_gradient = [&](float dx, float dy, float dz, float r2, 
-                                       float& out_gx, float& out_gy, float& out_gz) {
-        if (r2 <= 0.0f || r2 >= h2) {
-            out_gx = out_gy = out_gz = 0.0f;
-            return;
-        }
-        const float d = h2 - r2;
-        const float coeff = twfour_inv_pi_h8 * d * d;
-        out_gx = dx * coeff;
-        out_gy = dy * coeff;
-        out_gz = dz * coeff;
-    };
-
-    const float k_rd_inv_g = physics.K_stiffness * rest_density / gamma;
-
-    // --- ЭТАП 1: ПЛОТНОСТЬ И ДАВЛЕНИЕ ---
-    for (int i = 0; i < n; ++i) {
-        if (is_dark[i]) continue;
-
-        neighbors.clear();
-        bh_tree.query_radius(neighbors, posX[i], posY[i], posZ[i], h, posX, posY, posZ, is_dark);
-
-        float rho = 0.0f;
-
-        for (int j : neighbors) {
-            if (is_dark[j] || mass[j] <= 0.0f) continue;
-
-            const float dx = posX[j] - posX[i];
-            const float dy = posY[j] - posY[i];
-            const float dz = posZ[j] - posZ[i];
-            const float r2 = dx * dx + dy * dy + dz * dz;
-
-            rho += mass[j] * poly(r2);
-        }
-
-        density[i] = rho;
-
-        if (rho > 0.0f) {
-            const float ratio = rho / rest_density;
-            float p = k_rd_inv_g * (std::pow(ratio, gamma) - 1.0f);
-            pressure[i] = std::max(0.0f, p);
-        }
-    }
-
-    // --- ЭТАП 2: ДАВЛЕНИЕ И ВЯЗКОСТЬ ---
-    for (int i = 0; i < n; ++i) {
-        if (is_dark[i]) continue;
-
-        const float rho1 = density[i];
-        if (rho1 <= 1e-12f) continue;
-
-        neighbors.clear();
-        bh_tree.query_radius(neighbors, posX[i], posY[i], posZ[i], h, posX, posY, posZ, is_dark);
-
-        for (int j : neighbors) {
-            if (j == i || is_dark[j]) continue;
-
-            const float rho2 = density[j];
-            if (rho2 <= 1e-12f || mass[j] <= 0.0f) continue;
-
-            const float dx = posX[i] - posX[j];
-            const float dy = posY[i] - posY[j];
-            const float dz = posZ[i] - posZ[j];
-            const float r2 = dx * dx + dy * dy + dz * dz;
-
-            if (r2 <= 0.0f || r2 >= h2) continue;
-
-            // Градиент (плоские координаты)
-            float gx, gy, gz;
-            pressure_gradient(dx, dy, dz, r2, gx, gy, gz);
-
-            const float vdx = velX[i] - velX[j];
-            const float vdy = velY[i] - velY[j];
-            const float vdz = velZ[i] - velZ[j];
-
-            const float dot_prod = vdx * dx + vdy * dy + vdz * dz;
-
-            float PI_12 = 0.0f;
-
-            if (dot_prod < 0.0f) {
-                const float mu = (h * dot_prod) / (r2 + 0.01f * h2);
-                const float rho_avg = 0.5f * (rho1 + rho2);
-                if (rho_avg > 1e-12f) {
-                    PI_12 = (-physics.alpha * physics.cs * mu) / rho_avg;
-                }
-            }
-
-            const float sph_factor =
-                pressure[i] / (rho1 * rho1) +
-                pressure[j] / (rho2 * rho2) +
-                PI_12;
-
-            const float force_mag = mass[j] * sph_factor;
-            accX[i] += gx * force_mag;
-            accY[i] += gy * force_mag;
-            accZ[i] += gz * force_mag;
-        }
-    }
+    // Передаем данные в солвер (все вычисления произойдут на видеокарте)
+    sph_solver.solve(
+        accX, accY, accZ,
+        posX, posY, posZ,
+        velX, velY, velZ,
+        mass, is_dark,
+        physics.h, 
+        physics.rest_density, 
+        physics.K_stiffness, 
+        physics.gamma, 
+        physics.alpha, 
+        physics.cs
+    );
 }
 
 }

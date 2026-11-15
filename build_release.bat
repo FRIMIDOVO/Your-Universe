@@ -7,6 +7,7 @@ echo ========================================
 
 pyinstaller --noconfirm --clean --windowed --onedir ^
     --contents-directory "." ^
+    --icon "gui/designs/galaxy.ico" ^
     --add-data "bin;bin" ^
     --add-data "gui;gui" ^
     --name "Universe" ^

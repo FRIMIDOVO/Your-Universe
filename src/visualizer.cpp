@@ -58,7 +58,8 @@ Renderer::~Renderer() {
 Visualizer::Visualizer(size_t max_particles) : renderer() {
     SetTraceLogLevel(LOG_ERROR);
 
-    InitWindow(1000, 1000, "My Universe");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(800, 800, "My Universe");
     SetTargetFPS(200);
 
     renderer.init(max_particles);
@@ -144,6 +145,8 @@ void OrbitCamera::update(float dt) {
     if (IsKeyDown(KEY_S)) target = Vector3Subtract(target, Vector3Scale(forward, -speed));
     if (IsKeyDown(KEY_D)) target = Vector3Add(target, Vector3Scale(right, speed));
     if (IsKeyDown(KEY_A)) target = Vector3Subtract(target, Vector3Scale(right, speed));
+    if (IsKeyDown(KEY_SPACE)) target.y += speed;
+    if (IsKeyDown(KEY_LEFT_SHIFT)) target.y -= speed;
 }
 
 Camera OrbitCamera::get_camera() const {

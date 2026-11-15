@@ -37,44 +37,59 @@ void NBodySolver::init(int maxParticles) {
     
     currentMaxParticles = maxParticles;
     
-    // ИСПРАВЛЕНИЕ: используем 1024.0f для вещественного деления
     float mb = static_cast<float>(bytes) / (1024.0f * 1024.0f);
 }
 
-void NBodySolver::solve(const std::vector<float>& posX, 
-                        const std::vector<float>& posY,
-                        const std::vector<float>& posZ,
-                        const std::vector<float>& mass,
-                        std::vector<float>& outAccX, 
-                        std::vector<float>& outAccY,
-                        std::vector<float>& outAccZ,
-                        float G, float softeningSq) 
+void NBodySolver::solve(
+    const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
+    const std::vector<float>& mass,
+    std::vector<float>& outAccX, std::vector<float>& outAccY, std::vector<float>& outAccZ,
+    float G, float softeningSq
+)
 {
     int N = posX.size();
     if (N == 0) return;
 
-    // Динамически расширяем буферы при необходимости
     if (N > currentMaxParticles) {
         init(N);
     }
 
     size_t fSize = N * sizeof(float);
 
-    // 1. Копируем данные на GPU (добавлена ось Z)
+    // Копируем данные на GPU
     clManager.writeBuffer(d_posX, posX.data(), fSize);
     clManager.writeBuffer(d_posY, posY.data(), fSize);
     clManager.writeBuffer(d_posZ, posZ.data(), fSize);
     clManager.writeBuffer(d_mass, mass.data(), fSize);
 
-    // 2. Запускаем ядро
-    // Порядок аргументов должен строго соответствовать обновленному clSetKernelArg
-    clManager.runGravityForces(
-        d_posX, d_posY, d_posZ, d_mass, 
-        d_accX, d_accY, d_accZ,
-        N, G, softeningSq
-    );
+    // Берем кэшированное ядро и очередь
+    cl_kernel kernel = clManager.getGravityKernel();
+    cl_command_queue queue = clManager.getQueue();
 
-    // 3. Читаем результаты обратно
+    // Устанавливаем аргументы (в нужном порядке!)
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_posX);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), &d_posY);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), &d_posZ);
+    clSetKernelArg(kernel, 3, sizeof(cl_mem), &d_mass);
+    clSetKernelArg(kernel, 4, sizeof(cl_mem), &d_accX);
+    clSetKernelArg(kernel, 5, sizeof(cl_mem), &d_accY);
+    clSetKernelArg(kernel, 6, sizeof(cl_mem), &d_accZ);
+    clSetKernelArg(kernel, 7, sizeof(int), &N);
+    clSetKernelArg(kernel, 8, sizeof(float), &G);
+    clSetKernelArg(kernel, 9, sizeof(float), &softeningSq);
+
+    // Запускаем ядро
+    const size_t LOCAL_SIZE = 256;
+    size_t global_size = ((static_cast<size_t>(N) + LOCAL_SIZE - 1) / LOCAL_SIZE) * LOCAL_SIZE;
+    
+    cl_int err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, &global_size, &LOCAL_SIZE, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS) {
+        throw std::runtime_error("OpenCL Error [NBodySolver clEnqueueNDRangeKernel]: " + std::to_string(err));
+    }
+
+    clFinish(queue);
+
+    // Читаем результаты
     outAccX.resize(N);
     outAccY.resize(N);
     outAccZ.resize(N);

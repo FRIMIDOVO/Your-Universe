@@ -17,5 +17,6 @@ dist/
 bin/universe.exe
 pybind11/
 *.zip
-__pycache__/analyze.cpython-313.pyc
-gui/designs/__pycache__/
+*__pycache__/
+*.spec
+*.ini

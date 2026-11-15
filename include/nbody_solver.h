@@ -12,14 +12,12 @@ public:
     void init(int maxParticles);
 
     // Основной метод: загрузка данных -> расчет -> выгрузка ускорений
-    void solve(const std::vector<float>& posX, 
-               const std::vector<float>& posY,
-               const std::vector<float>& posZ,
-               const std::vector<float>& mass,
-               std::vector<float>& outAccX, 
-               std::vector<float>& outAccY,
-               std::vector<float>& outAccZ,
-               float G, float softeningSq);
+    void solve(
+        const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
+        const std::vector<float>& mass,
+        std::vector<float>& outAccX, std::vector<float>& outAccY, std::vector<float>& outAccZ,
+        float G, float softeningSq
+    );
 
 private:
     OpenCLManager& clManager;

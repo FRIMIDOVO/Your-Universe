@@ -1,10 +1,11 @@
 #pragma once
 #include <vector>
-#include "particle.h"
+#include "vec3.h"
 #include "config.h"
 #include "spatial_grid.h"
 #include "opencl_manager.h"
 #include "nbody_solver.h"
+#include "sph_solver.h"
 #include "barnes_hut.h"
 
 
@@ -20,13 +21,16 @@ public:
     void add_particle(
         float m,
         float r,
-        Vec3 pos,
-        Vec3 vel,
+        float px, float py, float pz,
+        float vx, float vy, float vz,
         bool dm
     );
 
     // Очищает все массивы и сбрасывает время
     void reset();
+
+    // Доп управление массивами
+    void delete_dm();
 
     // Шаг симуляции
     void step();
@@ -38,13 +42,18 @@ public:
     const float get_time() const { return time; }
     void set_time(float t) { time = t; }
 
-    // Для рендера
+    // Гетеры массивов
     const std::vector<float>& get_posX() const { return posX; }
     const std::vector<float>& get_posY() const { return posY; }
     const std::vector<float>& get_posZ() const { return posZ; }
+    const std::vector<float>& get_velX() const { return velX; }
+    const std::vector<float>& get_velY() const { return velY; }
+    const std::vector<float>& get_velZ() const { return velZ; }
+    const std::vector<float>& get_mass() const { return mass; }
+    const std::vector<float>& get_radius() const { return radius; }
     const std::vector<uint8_t>& get_dark() const { return is_dark; }
 
-    // Обновляем размер хэш сетки
+    // Обновление размера хэш сетки
     void update_cell_size();
 
 private:
@@ -55,6 +64,7 @@ private:
     OpenCLManager opencl_manager;
     SpatialGrid spatial_grid;
     NBodySolver nbody_solver;
+    SPHSolver sph_solver;
     BarnesHutTree bh_tree;
 
     // Одномерные массивы

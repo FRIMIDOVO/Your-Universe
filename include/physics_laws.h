@@ -2,6 +2,7 @@
 #include <vector>
 #include "config.h"
 #include "nbody_solver.h"
+#include "sph_solver.h"
 #include "spatial_grid.h"
 #include "barnes_hut.h"
 
@@ -45,6 +46,6 @@ namespace Laws {
         const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
         const std::vector<float>& velX, const std::vector<float>& velY, const std::vector<float>& velZ,
         const std::vector<float>& mass, const std::vector<uint8_t>& is_dark,
-        const PhysicsConfig& physics, const BarnesHutTree& bh_tree
+        const PhysicsConfig& physics, SPHSolver& sph_solver
     );
 };
