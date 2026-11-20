@@ -1,79 +1,73 @@
 #pragma once
 #include <vector>
-#include "vec3.h"
+
 #include "config.h"
+
 #include "spatial_grid.h"
 #include "opencl_manager.h"
 #include "nbody_solver.h"
 #include "sph_solver.h"
-#include "barnes_hut.h"
+
+#include "particle_data.h"
+#include "particle_buffers.h"
 
 
 class PhysicsEngine {
 public:
     // Конструктор
-    PhysicsEngine(
-        PhysicsConfig& physics, 
-        SpaceConfig& space
-    );
+    PhysicsEngine(PhysicsConfig& physics);
 
     // Добавление частицы в расчёт
     void add_particle(
         float m,
-        float r,
         float px, float py, float pz,
         float vx, float vy, float vz,
         bool dm
-    );
+    ) 
+    { particle_data.add_particle(
+            m,
+            px, py, pz,
+            vx, vy, vz,
+            dm
+        );
+    }
 
-    // Очищает все массивы и сбрасывает время
-    void reset();
-
-    // Доп управление массивами
-    void delete_dm();
+    // Очистка частиц
+    void clear_all() { particle_data.clear_all(); }
+    void delete_dm() { particle_data.clear_dm(); }
 
     // Шаг симуляции
     void step();
 
-    // Геттеры
-    const SpaceConfig& get_space() const { return space; }
-
-    // Инфо
-    const float get_time() const { return time; }
+    // Время вселенной
+    float get_time() const { return time; }
     void set_time(float t) { time = t; }
 
-    // Гетеры массивов
-    const std::vector<float>& get_posX() const { return posX; }
-    const std::vector<float>& get_posY() const { return posY; }
-    const std::vector<float>& get_posZ() const { return posZ; }
-    const std::vector<float>& get_velX() const { return velX; }
-    const std::vector<float>& get_velY() const { return velY; }
-    const std::vector<float>& get_velZ() const { return velZ; }
-    const std::vector<float>& get_mass() const { return mass; }
-    const std::vector<float>& get_radius() const { return radius; }
-    const std::vector<uint8_t>& get_dark() const { return is_dark; }
+    // Гетеры информации о частицах
+    const std::vector<float>& get_posX() const { return particle_data.posX; }
+    const std::vector<float>& get_posY() const { return particle_data.posY; }
+    const std::vector<float>& get_posZ() const { return particle_data.posZ; }
+    const std::vector<float>& get_velX() const { return particle_data.velX; }
+    const std::vector<float>& get_velY() const { return particle_data.velY; }
+    const std::vector<float>& get_velZ() const { return particle_data.velZ; }
+    const std::vector<float>& get_mass() const { return particle_data.mass; }
+    const std::vector<uint8_t>& get_dark() const { return particle_data.is_dark; }
 
     // Обновление размера хэш сетки
-    void update_cell_size();
+    void update_cell_size() { spatial_grid.set_cell_size(physics.h * 2); }
 
 private:
-    // Конфиги
+    // Конфиг с параметрами физики
     PhysicsConfig& physics;
-    SpaceConfig& space;
     
     OpenCLManager opencl_manager;
-    SpatialGrid spatial_grid;
-    NBodySolver nbody_solver;
-    SPHSolver sph_solver;
-    BarnesHutTree bh_tree;
+    SpatialGrid spatial_grid;       // хэш сетка
+    NBodySolver nbody_solver;       // расчётчик гравитации
+    SPHSolver sph_solver;           // расчётчик гидродинамики
 
-    // Одномерные массивы
-    std::vector<float> accX, accY, accZ;
-    std::vector<float> posX, posY, posZ;
-    std::vector<float> velX, velY, velZ;
-    std::vector<float> mass;
-    std::vector<float> radius;
-    std::vector<uint8_t> is_dark;
+    // Всеми частицами владеет только движок
+    ParticleData particle_data;
+    ParticleBuffers particle_buffers;
 
     float time = 0.0f;
 };

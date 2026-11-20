@@ -1,81 +1,87 @@
-#define TILE_SIZE 256 // Должен совпадать с local_size в C++ коде
+#define TILE_SIZE 128
 
 __kernel void calculate_forces_nbody(
-    __global const float* pos_x,
+    __global const float* pos_x,       // Координаты частиц по осям X, Y и Z
     __global const float* pos_y,
     __global const float* pos_z,
-    __global const float* mass,
-    __global float* acc_x,
+    __global const float* mass,        // Массы частиц
+
+    __global float* acc_x,             // Результирующие ускорения частиц
     __global float* acc_y,
     __global float* acc_z,
-    int N,
-    float G,
-    float softening_sq)
+
+    int N,                             // Общее количество частиц
+    float G,                           // Гравитационная постоянная
+    float softening_sq                 // Квадрат параметра сглаживания (должен быть > 0)
+)
 {
-    // Локальная память для тайлинга
-    __local float tile_px[TILE_SIZE];
-    __local float tile_py[TILE_SIZE];
-    __local float tile_pz[TILE_SIZE];
-    __local float tile_m[TILE_SIZE];
+    // Векторный тайл в локальной памяти:
+    // .xyz — координаты частицы-источника, .w — её масса.
+    __local float4 tile[TILE_SIZE];
 
     int i = get_global_id(0);
-    if (i >= N) return;
+    int tid = get_local_id(0);
+    bool active = i < N;
 
-    float xi = pos_x[i];
-    float yi = pos_y[i];
-    float zi = pos_z[i];
-    
-    float ax = 0.0f;
-    float ay = 0.0f;
-    float az = 0.0f;
+    // Координаты текущей частицы в регистрах (в виде float3 для векторных операций)
+    float3 pos_i = active ? (float3)(pos_x[i], pos_y[i], pos_z[i]) : (float3)(0.0f);
 
-    // Проходим по всем тайлам
-    for (int t = 0; t < N; t += TILE_SIZE) {
-        // 1. Загружаем блок данных в Shared Memory
-        int tid = get_local_id(0);
+    // Векторный накопитель ускорения в регистрах
+    float3 acc = (float3)(0.0f);
+
+    for (int t = 0; t < N; t += TILE_SIZE)
+    {
         int idx = t + tid;
-        
-        if (idx < N) {
-            tile_px[tid] = pos_x[idx];
-            tile_py[tid] = pos_y[idx];
-            tile_pz[tid] = pos_z[idx];
-            tile_m[tid] = mass[idx];
-        } else {
-            // Заполняем нулями, чтобы не читать за границы
-            tile_px[tid] = 0.0f;
-            tile_py[tid] = 0.0f;
-            tile_pz[tid] = 0.0f;
-            tile_m[tid] = 0.0f;
+
+        // Упаковываем скалярные данные из глобальной памяти в один вектор float4.
+        // Для несуществующих частиц записываем 0.0f — нулевая масса (.w = 0)
+        // автоматически обнулит их гравитационный вклад без проверок if в цикле.
+        if (idx < N)
+        {
+            tile[tid] = (float4)(pos_x[idx], pos_y[idx], pos_z[idx], mass[idx]);
         }
-        
-        // Синхронизация: ждем, пока ВСЕ потоки группы загрузят данные
+        else
+        {
+            tile[tid] = (float4)(0.0f);
+        }
+
         barrier(CLK_LOCAL_MEM_FENCE);
-        
-        // 2. Считаем силы с частицами из текущего тайла
-        #pragma unroll 8 // Развертывание цикла для скорости
-        for (int j = 0; j < TILE_SIZE; j++) {
-            int global_j = t + j;
-            if (global_j >= N || global_j == i) continue;
-            
-            float dx = tile_px[j] - xi;
-            float dy = tile_py[j] - yi;
-            float dz = tile_pz[j] - zi; // <-- Добавлено
-            
-            // Формула расстояния теперь 3D
-            float dist_sq = dx*dx + dy*dy + dz*dz + softening_sq;
-            float inv_dist = native_rsqrt(dist_sq);
-            float f = G * tile_m[j] * inv_dist * inv_dist * inv_dist;
-            
-            ax += dx * f;
-            ay += dy * f;
-            az += dz * f;
+
+        if (active)
+        {
+            #pragma unroll 8
+            for (int j = 0; j < TILE_SIZE; j++)
+            {
+                float4 p_j = tile[j];
+
+                // Векторная разность координат (обрабатывается за одну инструкцию)
+                float3 r = p_j.xyz - pos_i;
+
+                // Скалярное произведение r на себя = dx*dx + dy*dy + dz*dz
+                float dist_sq = dot(r, r) + softening_sq;
+
+                float inv_dist = native_rsqrt(dist_sq);
+                float inv_dist_cube = inv_dist * inv_dist * inv_dist;
+
+                // p_j.w — это масса частицы j.
+                // Если j == i, то r == (0,0,0), и вклад самодействия строго равен 0.
+                // Если t + j >= N, то p_j.w == 0, и вклад фиктивной частицы тоже 0.
+                float s = p_j.w * inv_dist_cube;
+
+                // Векторное умножение и сложение (FMA — Fused Multiply-Add)
+                acc += r * s;
+            }
         }
-        
-        // Синхронизация перед загрузкой следующего тайла
+
         barrier(CLK_LOCAL_MEM_FENCE);
     }
-    
-    acc_x[i] = ax;
-    acc_y[i] = ay;
-    acc_z[i] = az;
+
+    // Умножаем на G один раз в конце вместо выполнения этого внутри двойного цикла!
+    if (active)
+    {
+        acc *= G;
+        acc_x[i] = acc.x;
+        acc_y[i] = acc.y;
+        acc_z[i] = acc.z;
+    }
 }

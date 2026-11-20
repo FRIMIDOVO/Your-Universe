@@ -26,8 +26,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.checkBox_render.toggled.connect(lambda flag: self.command_queue.put(("switch_render", flag)))
 
         self.horizontalSlider_dt.valueChanged.connect(lambda val: self.command_queue.put(("set_dt", val)))
-        self.horizontalSlider_elasticity.valueChanged.connect(lambda val: self.command_queue.put(("set_elasticity", val)))
-        self.horizontalSlider_theta.valueChanged.connect(lambda val: self.command_queue.put(("set_theta", val)))
 
         # SPH Configs
         self.horizontalSlider_h.valueChanged.connect(lambda val: self.command_queue.put(("set_h", val)))
@@ -38,7 +36,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Simulation
         self.pushButton_spawn.clicked.connect(self.pushButton_spawn_clicked)
-        self.pushButton_reset.clicked.connect(lambda: self.command_queue.put(("engine_reset", None)))
+        self.pushButton_reset.clicked.connect(lambda: self.command_queue.put(("clear_all", None)))
         self.pushButton_delete_dm.clicked.connect(lambda: self.command_queue.put(("delete_dm", None)))
 
         # Save / Load
@@ -52,8 +50,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # Собираем актуальные значения из виджетов
         current_dt_val = self.horizontalSlider_dt.value()
-        current_el_val = self.horizontalSlider_elasticity.value()
-        current_th_val = self.horizontalSlider_theta.value()
         current_calc_flag = self.checkBox_calculate.isChecked()
         current_rend_flag = self.checkBox_render.isChecked()
         
@@ -68,9 +64,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.command_queue.put(("switch_calculate", current_calc_flag))
         self.command_queue.put(("switch_render", current_rend_flag))
         self.command_queue.put(("set_dt", current_dt_val))
-        self.command_queue.put(("set_elasticity", current_el_val))
-        self.command_queue.put(("set_theta", current_th_val))
-        
+
         self.command_queue.put(("set_h", current_h_val))
         self.command_queue.put(("set_stiffness", current_stiff_val))
         self.command_queue.put(("set_cs", current_cs_val))
@@ -98,12 +92,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         exponent = -3.0 + (val - 1) / 999.0 * 3.0
         u.set_dt(10 ** exponent)
 
-    def set_elasticity(self, u: Universe, val):
-        u.set_elasticity(val / 100)
-
-    def set_theta(self, u: Universe, val):
-        u.set_theta(val / 100)
-
     def set_h(self, u: Universe, val):
         # Например, от 0.1 до 10.0 (val от 1 до 100)
         h = 0.1 + (val - 1) / 99.0 * 9.9
@@ -128,12 +116,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         args = (
             self.spinBox_b_count.value(),
             self.doubleSpinBox_b_mass.value(),
-            self.doubleSpinBox_b_radius.value(),
             self.spinBox_b_spawn_r.value(),
             self.spinBox_b_omega.value(),
             self.spinBox_dm_count.value(),
             self.doubleSpinBox_dm_mass.value(),
-            self.doubleSpinBox_dm_radius.value(),
             self.spinBox_dm_spawn_r.value(),
             self.spinBox_dm_omega.value()
         )
@@ -142,8 +128,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def spawn_cluster(self, u: Universe, *args):
         u.spawn_cluster(*args)
 
-    def engine_reset(self, u: Universe, _):
-        u.engine_reset()
+    def clear_all(self, u: Universe, _):
+        u.clear_all()
 
     def delete_dm(self, u: Universe, _):
         u.delete_dm()

@@ -2,7 +2,6 @@
 #include "analyzer.h"
 #include <iostream>     // для std::cout
 #include <chrono>       // для std::chrono
-#include <cstddef>      // для size_t
 #include <nlohmann/json.hpp>
 
 #include <random>
@@ -15,44 +14,35 @@ namespace {
         return std::uniform_real_distribution<float>(min, max)(rng);
     }
 
-    Vec3 random_position(float radius) {
-        // Равномерное распределение по объёму сферы
+    void random_position(float radius, float& x, float& y, float& z) {
         float cosTheta = random_float(-1.0f, 1.0f);
-        float phi = random_float(0.0f, 2.0f * 3.14159265f);
-        float r = radius * std::cbrt(random_float(0.0f, 1.0f));
-
+        float phi      = random_float(0.0f, 2.0f * 3.14159265f);
+        float r        = radius * std::cbrt(random_float(0.0f, 1.0f));
         float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
 
-        return Vec3(
-            r * sinTheta * std::cos(phi),
-            r * sinTheta * std::sin(phi),
-            r * cosTheta
-        );
+        x = r * sinTheta * std::cos(phi);
+        y = r * sinTheta * std::sin(phi);
+        z = r * cosTheta;
     }
 
-    Vec3 random_velocity(const Vec3& pos, float omega, float temperature) {
-        // Вращение вокруг оси Z
-        Vec3 velocity(
-            -omega * pos.y,
-             omega * pos.x,
-             0.0f
-        );
+    void random_velocity(float px, float py, float pz,
+                         float omega, float temperature,
+                         float& vx, float& vy, float& vz) {
+        vx = -omega * py;
+        vy =  omega * px;
+        vz =  0.0f;
 
-        // Случайная составляющая скорости
-        velocity.x += random_float(-temperature, temperature);
-        velocity.y += random_float(-temperature, temperature);
-        velocity.z += random_float(-temperature, temperature);
-
-        return velocity;
+        vx += random_float(-temperature, temperature);
+        vy += random_float(-temperature, temperature);
+        vz += random_float(-temperature, temperature);
     }
 }
 
 
 Universe::Universe() :
     physics(),
-    space(),
     viz(),
-    engine(physics, space)
+    engine(physics)
 {
 }
 
@@ -86,39 +76,41 @@ void Universe::render() {
 }
 
 void Universe::spawn_cluster(
-    int b_count, float b_mass, float b_radius, float b_spawn_r, float b_omega,
-    int dm_count, float dm_mass, float dm_radius, float dm_spawn_r, float dm_omega
+    int   b_count,  float b_mass,  float b_spawn_r,  float b_omega,
+    int   dm_count, float dm_mass, float dm_spawn_r, float dm_omega
 )
 {
     // Барионная материя
     for (int i = 0; i < b_count; ++i) {
-        Vec3 pos = random_position(b_spawn_r);
-        Vec3 vel = random_velocity(pos, b_omega, b_omega * 0.05f);
+        float px, py, pz;
+        random_position(b_spawn_r, px, py, pz);
+
+        float vx, vy, vz;
+        random_velocity(px, py, pz, b_omega, b_omega * 0.05f, vx, vy, vz);
 
         engine.add_particle(
             b_mass,
-            b_radius,
-            pos.x, pos.y, pos.z,
-            vel.x, vel.y, vel.z,
+            px, py, pz,
+            vx, vy, vz,
             false
         );
     }
 
     // Тёмная материя
     for (int i = 0; i < dm_count; ++i) {
-        Vec3 pos = random_position(dm_spawn_r);
-        Vec3 vel = random_velocity(pos, dm_omega, dm_omega * 0.05f);
+        float px, py, pz;
+        random_position(dm_spawn_r, px, py, pz);
+
+        float vx, vy, vz;
+        random_velocity(px, py, pz, dm_omega, dm_omega * 0.05f, vx, vy, vz);
 
         engine.add_particle(
             dm_mass,
-            dm_radius,
-            pos.x, pos.y, pos.z,
-            vel.x, vel.y, vel.z,
+            px, py, pz,
+            vx, vy, vz,
             true
         );
     }
-
-    engine.update_cell_size();
 }
 
 void Universe::save_cluster(const std::filesystem::path& save) {
@@ -129,7 +121,7 @@ void Universe::save_cluster(const std::filesystem::path& save) {
         save.string(),
         engine.get_posX(), engine.get_posY(), engine.get_posZ(),
         engine.get_velX(), engine.get_velY(), engine.get_velZ(),
-        engine.get_mass(), engine.get_radius(), engine.get_dark()
+        engine.get_mass(), engine.get_dark()
     );
 
     // Анализ данных для получения параметров нормализации
@@ -157,12 +149,12 @@ void Universe::load_cluster(
 ) {
     if (save.empty() || !std::filesystem::exists(save) || !std::filesystem::is_directory(save)) return;
 
-    // Загрузка
-    std::vector<float> posX, posY, posZ, velX, velY, velZ, mass, radius;
+    // 1. Загрузка
+    std::vector<float> posX, posY, posZ, velX, velY, velZ, mass;
     std::vector<std::uint8_t> is_dark;
-    GalaxySaver::load((save / "galaxy.csv").string(), posX, posY, posZ, velX, velY, velZ, mass, radius, is_dark);
+    GalaxySaver::load((save / "galaxy.csv").string(), posX, posY, posZ, velX, velY, velZ, mass, is_dark);
 
-    // Метаданные
+    // 2. Метаданные
     float meta_time = 0.0f;
     float meta_pos[3] = {0,0,0};
     float meta_vel[3] = {0,0,0};
@@ -170,16 +162,16 @@ void Universe::load_cluster(
     GalaxySaver::load_meta(save.string(), meta_time, meta_pos[0], meta_pos[1], meta_pos[2], meta_vel[0], meta_vel[1], meta_vel[2], meta_rot);
     engine.set_time(meta_time);
 
-    // Матрица пользовательского поворота
+    // 3. Матрица пользовательского поворота
     const float identity[3][3] = {{1,0,0},{0,1,0},{0,0,1}};
     const float (*R)[3] = rot ? rot : identity;
 
-    // Центр вращения позиций (0 если normal, иначе meta_pos)
+    // 4. Центр вращения позиций (0 если normal, иначе meta_pos)
     const float cx = normal ? 0.0f : meta_pos[0];
     const float cy = normal ? 0.0f : meta_pos[1];
     const float cz = normal ? 0.0f : meta_pos[2];
 
-    // Цикл
+    // 5. Цикл
     for (size_t i = 0; i < posX.size(); ++i) {
         float x = posX[i], y = posY[i], z = posZ[i];
         float vx = velX[i], vy = velY[i], vz = velZ[i];
@@ -229,10 +221,12 @@ void Universe::load_cluster(
         float vy_final = vy_rot + dvy;
         float vz_final = vz_rot + dvz;
 
-        engine.add_particle(mass[i], radius[i],
-                            x_final, y_final, z_final,
-                            vx_final, vy_final, vz_final,
-                            is_dark[i]);
+        engine.add_particle(
+            mass[i],
+            x_final, y_final, z_final,
+            vx_final, vy_final, vz_final,
+            is_dark[i]
+        );
     }
 }
 

@@ -1,259 +1,228 @@
-
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
-#define PI 3.14159265358979323846f
 #define RHO_EPS 1e-12f
+#define PI_F 3.14159265358979323846f
 
+inline ulong make_cell_key_z(ulong key_xy, int cz, int offset) {
+    return key_xy | ((((ulong)(cz + offset)) & 0x1FFFFFUL) << 42);
+}
 
+inline int find_cell(
+    __global const ulong* unique_keys,
+    int n_uniq,
+    ulong target
+) {
+    int lo = 0;
+    int hi = n_uniq - 1;
+    while (lo < hi) {
+        int mid = (lo + hi) >> 1;
+        if (unique_keys[mid] < target)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    return (unique_keys[lo] == target) ? lo : -1;
+}
+
+// ============================================================================
+// 1. DENSITY (Ядро Poly6 для гладкого расчёта плотности)
+// ============================================================================
 __kernel void calculate_density_sph(
     __global const float* posX,
     __global const float* posY,
     __global const float* posZ,
-
     __global const float* mass,
     __global const uchar* is_dark,
-
     __global float* density,
-
-    const int N,
+    const int   N,
     const float h2,
-    const float four_inv_pi_h8
+    const float four_inv_pi_h8,
+    __global const ulong* unique_keys,
+    __global const uint*  sorted_indices,
+    __global const int*   cell_start,
+    __global const int*   cell_count,
+    const int   n_uniq,
+    const int   offset,
+    const float inv_cell_size
 ) {
     const int i = get_global_id(0);
-
-    if (i >= N)
-        return;
+    if (i >= N) return;
 
     if (is_dark[i]) {
         density[i] = 0.0f;
         return;
     }
 
-    const float xi = posX[i];
-    const float yi = posY[i];
-    const float zi = posZ[i];
+    const float3 pos_i = (float3)(posX[i], posY[i], posZ[i]);
+
+    const int cx = (int)floor(pos_i.x * inv_cell_size);
+    const int cy = (int)floor(pos_i.y * inv_cell_size);
+    const int cz = (int)floor(pos_i.z * inv_cell_size);
 
     float rho = 0.0f;
 
-    for (int j = 0; j < N; ++j) {
+    for (int dx = -1; dx <= 1; ++dx) {
+        const ulong key_x = ((ulong)(cx + dx + offset)) & 0x1FFFFFUL;
 
-        if (is_dark[j] || mass[j] <= 0.0f)
-            continue;
+        for (int dy = -1; dy <= 1; ++dy) {
+            const ulong key_xy = key_x | ((((ulong)(cy + dy + offset)) & 0x1FFFFFUL) << 21);
 
-        const float dx = posX[j] - xi;
-        const float dy = posY[j] - yi;
-        const float dz = posZ[j] - zi;
+            for (int dz = -1; dz <= 1; ++dz) {
+                const ulong key = make_cell_key_z(key_xy, cz + dz, offset);
+                const int ci = find_cell(unique_keys, n_uniq, key);
+                if (ci < 0) continue;
 
-        const float r2 =
-            dx * dx +
-            dy * dy +
-            dz * dz;
+                const int start = cell_start[ci];
+                const int end   = start + cell_count[ci];
 
-        if (r2 < 0.0f || r2 >= h2)
-            continue;
+                for (int k = start; k < end; ++k) {
+                    const int j = sorted_indices[k];
+                    const float mj = mass[j];
+                    if (is_dark[j] || mj <= 0.0f) continue;
 
-        const float d = h2 - r2;
+                    const float3 r = (float3)(posX[j], posY[j], posZ[j]) - pos_i;
+                    const float r2 = dot(r, r);
 
-        const float W =
-            four_inv_pi_h8 *
-            d * d * d;
-
-        rho += mass[j] * W;
+                    if (r2 >= h2) continue;
+                    const float d = h2 - r2;
+                    rho += mj * d * d * d;
+                }
+            }
+        }
     }
 
-    density[i] = rho;
+    density[i] = rho * four_inv_pi_h8;
 }
 
-
+// ============================================================================
+// 2. PRESSURE (Уравнение состояния; пишем сразу P / rho^2)
+// ============================================================================
 __kernel void calculate_pressure_sph(
     __global const float* density,
-
     __global const uchar* is_dark,
-
     __global float* pressure,
-
-    const int N,
+    const int   N,
     const float rest_density,
     const float k_rd_inv_g,
     const float gamma
 ) {
     const int i = get_global_id(0);
-
-    if (i >= N)
-        return;
-
-    if (is_dark[i]) {
-        pressure[i] = 0.0f;
-        return;
-    }
+    if (i >= N) return;
 
     const float rho = density[i];
-
-    if (rho <= 0.0f) {
+    if (is_dark[i] || rho <= RHO_EPS) {
         pressure[i] = 0.0f;
         return;
     }
 
-    const float ratio = rho / rest_density;
-
-    const float p =
-        k_rd_inv_g *
-        (pow(ratio, gamma) - 1.0f);
-
-    pressure[i] = fmax(0.0f, p);
+    const float ratio = rho * native_recip(rest_density);
+    const float p = fmax(0.0f, k_rd_inv_g * (native_exp2(gamma * native_log2(ratio)) - 1.0f));
+    pressure[i] = p * native_recip(rho * rho);
 }
 
-
+// ============================================================================
+// 3. FORCES (Ядро Spiky Дебруна против слипания частиц + вязкость Монагана)
+// ============================================================================
 __kernel void calculate_forces_sph(
     __global const float* posX,
     __global const float* posY,
     __global const float* posZ,
-
     __global const float* velX,
     __global const float* velY,
     __global const float* velZ,
-
     __global const float* mass,
     __global const uchar* is_dark,
-
     __global float* accX,
     __global float* accY,
     __global float* accZ,
-
     __global const float* density,
     __global const float* pressure,
-
-    const int N,
+    const int   N,
     const float h,
     const float h2,
-    const float twfour_inv_pi_h8,
+    const float twfour_inv_pi_h8, // Оставлено для совместимости сигнатуры с C++
     const float alpha,
-    const float cs
+    const float cs,
+    __global const ulong* unique_keys,
+    __global const uint*  sorted_indices,
+    __global const int*   cell_start,
+    __global const int*   cell_count,
+    const int   n_uniq,
+    const int   offset,
+    const float inv_cell_size
 ) {
     const int i = get_global_id(0);
-
-    if (i >= N)
-        return;
-
-    if (is_dark[i])
-        return;
+    if (i >= N) return;
+    if (is_dark[i]) return;
 
     const float rho1 = density[i];
+    if (rho1 <= RHO_EPS) return;
 
-    if (rho1 <= RHO_EPS)
-        return;
+    const float3 pos_i = (float3)(posX[i], posY[i], posZ[i]);
+    const float3 vel_i = (float3)(velX[i], velY[i], velZ[i]);
+    const float p_rho2_i = pressure[i];
 
-    const float xi = posX[i];
-    const float yi = posY[i];
-    const float zi = posZ[i];
+    // Константа градиента ядра Spiky: 45 / (pi * h^6)
+    const float spiky_grad = 45.0f * native_recip(PI_F * h2 * h2 * h2);
+    const float two_visc_coeff = -2.0f * alpha * cs * h;
+    const float eps_h2 = 0.01f * h2;
 
-    const float vxi = velX[i];
-    const float vyi = velY[i];
-    const float vzi = velZ[i];
+    float3 acc = (float3)(0.0f);
 
-    const float pi_i = pressure[i];
+    const int cx = (int)floor(pos_i.x * inv_cell_size);
+    const int cy = (int)floor(pos_i.y * inv_cell_size);
+    const int cz = (int)floor(pos_i.z * inv_cell_size);
 
-    float ax = 0.0f;
-    float ay = 0.0f;
-    float az = 0.0f;
+    for (int dx = -1; dx <= 1; ++dx) {
+        const ulong key_x = ((ulong)(cx + dx + offset)) & 0x1FFFFFUL;
 
-    for (int j = 0; j < N; ++j) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            const ulong key_xy = key_x | ((((ulong)(cy + dy + offset)) & 0x1FFFFFUL) << 21);
 
-        if (j == i || is_dark[j])
-            continue;
+            for (int dz = -1; dz <= 1; ++dz) {
+                const ulong key = make_cell_key_z(key_xy, cz + dz, offset);
+                const int ci = find_cell(unique_keys, n_uniq, key);
+                if (ci < 0) continue;
 
-        const float rho2 = density[j];
+                const int start = cell_start[ci];
+                const int end   = start + cell_count[ci];
 
-        if (rho2 <= RHO_EPS || mass[j] <= 0.0f)
-            continue;
+                for (int k = start; k < end; ++k) {
+                    const int j = sorted_indices[k];
+                    if (j == i || is_dark[j]) continue;
 
-        // ----------------------------------------------------
-        // Distance
-        // ----------------------------------------------------
+                    const float rho2 = density[j];
+                    const float mj = mass[j];
+                    if (rho2 <= RHO_EPS || mj <= 0.0f) continue;
 
-        const float dx = xi - posX[j];
-        const float dy = yi - posY[j];
-        const float dz = zi - posZ[j];
+                    const float3 r = pos_i - (float3)(posX[j], posY[j], posZ[j]);
+                    const float r2 = dot(r, r);
 
-        const float r2 =
-            dx * dx +
-            dy * dy +
-            dz * dz;
+                    // Защита от деления на ноль при r -> 0
+                    if (r2 <= 1e-12f || r2 >= h2) continue;
 
-        if (r2 <= 0.0f || r2 >= h2)
-            continue;
+                    const float inv_r = native_rsqrt(r2);
+                    const float dist  = r2 * inv_r;
+                    const float diff  = h - dist;
 
-        // ----------------------------------------------------
-        // Pressure gradient
-        // ----------------------------------------------------
+                    // Градиент ядра Spiky: максимальное отталкивание при сближении
+                    const float grad_mag = spiky_grad * diff * diff * inv_r;
 
-        const float d = h2 - r2;
+                    const float3 v_diff = vel_i - (float3)(velX[j], velY[j], velZ[j]);
+                    const float dot_prod = dot(v_diff, r);
 
-        const float coeff =
-            twfour_inv_pi_h8 *
-            d * d;
+                    float PI_12 = 0.0f;
+                    if (dot_prod < 0.0f) {
+                        const float denom = (r2 + eps_h2) * (rho1 + rho2);
+                        PI_12 = (two_visc_coeff * dot_prod) * native_recip(denom);
+                    }
 
-        const float gx = dx * coeff;
-        const float gy = dy * coeff;
-        const float gz = dz * coeff;
-
-        // ----------------------------------------------------
-        // Relative velocity
-        // ----------------------------------------------------
-
-        const float vdx = vxi - velX[j];
-        const float vdy = vyi - velY[j];
-        const float vdz = vzi - velZ[j];
-
-        const float dot_prod =
-            vdx * dx +
-            vdy * dy +
-            vdz * dz;
-
-        // ----------------------------------------------------
-        // Artificial viscosity
-        // ----------------------------------------------------
-
-        float PI_12 = 0.0f;
-
-        if (dot_prod < 0.0f) {
-
-            const float mu =
-                (h * dot_prod) /
-                (r2 + 0.01f * h2);
-
-            const float rho_avg =
-                0.5f * (rho1 + rho2);
-
-            if (rho_avg > RHO_EPS) {
-                PI_12 =
-                    (-alpha * cs * mu) /
-                    rho_avg;
+                    const float sph_factor = p_rho2_i + pressure[j] + PI_12;
+                    acc += r * (mj * sph_factor * grad_mag);
+                }
             }
         }
-
-        // ----------------------------------------------------
-        // SPH force
-        // ----------------------------------------------------
-
-        const float sph_factor =
-            pi_i / (rho1 * rho1) +
-            pressure[j] / (rho2 * rho2) +
-            PI_12;
-
-        const float force_mag =
-            mass[j] * sph_factor;
-
-        ax += gx * force_mag;
-        ay += gy * force_mag;
-        az += gz * force_mag;
     }
 
-    // --------------------------------------------------------
-    // Accumulate acceleration
-    // --------------------------------------------------------
-
-    accX[i] += ax;
-    accY[i] += ay;
-    accZ[i] += az;
+    accX[i] += acc.x;
+    accY[i] += acc.y;
+    accZ[i] += acc.z;
 }

@@ -5,7 +5,6 @@ import threading
 import sys
 import time
 
-
 def main():
     universe = Universe()
     gui = MainWindow(); gui.update_configs(universe)

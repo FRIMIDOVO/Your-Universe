@@ -1,57 +1,28 @@
 #pragma once
 
-#define VISUALIZER_FIELDS \
-    FIELD(render) \
-    FIELD(width) \
-    FIELD(height)
-
-#define SPACE_FIELDS \
-    FIELD(bounds) \
-    FIELD(min_bound) \
-    FIELD(max_bound)
-
-#define PHYSICS_FIELDS \
-    FIELD(calculate) \
-    FIELD(record) \
-    FIELD(theta) \
-    FIELD(softening) \
-    FIELD(G) \
-    FIELD(dt) \
-    FIELD(K_elasticity) \
-    FIELD(K_stiffness) \
-    FIELD(h) \
-    FIELD(rest_density) \
-    FIELD(gamma) \
-    FIELD(alpha) \
-    FIELD(cs)
-
 
 struct VisualizerConfig {
+    // Вкл/выкл рендер
     bool render = true;
+
+    // Дефолтные размеры окна
     int width = 800;
     int height = 800;
 };
 
-struct SpaceConfig {
-    bool bounds = false;
-    float min_bound = -15.0f;
-    float max_bound = 15.0f;
-};
-
 struct PhysicsConfig {
-    PhysicsConfig() { update(); }
+    PhysicsConfig() { update(); }   // Апдейт при создании, что бы все поля заполнились
 
-    // Базовые параметры
+    // Вкл/выкл расчёт физики
     bool calculate = true;
-    bool record = true;
-    float theta = 0.0f;
-    float softening = 1.0f;
-    float softening_sq;
-    float G = 1.0;
+
+    // Дельта время
     float dt = 0.005f;
 
-    // Упругость
-    float K_elasticity = 0.5f;
+    // Гравитация
+    float softening = 0.1f;
+    float softening_sq;
+    float G = 1.0;
 
     // SPH
     float K_stiffness = 1.0f;

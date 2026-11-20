@@ -11,8 +11,7 @@ namespace GalaxySaver {
         const std::string& dir,
         const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
         const std::vector<float>& velX, const std::vector<float>& velY, const std::vector<float>& velZ,
-        const std::vector<float>& mass, const std::vector<float>& radius,
-        const std::vector<uint8_t>& is_dark
+        const std::vector<float>& mass, const std::vector<uint8_t>& is_dark
     );
 
     // Сохранение в json метаданных (время, смещение, матрица поворота)
@@ -30,8 +29,7 @@ namespace GalaxySaver {
         const std::string& dir,
         std::vector<float>& posX, std::vector<float>& posY, std::vector<float>& posZ,
         std::vector<float>& velX, std::vector<float>& velY, std::vector<float>& velZ,
-        std::vector<float>& mass, std::vector<float>& radius,
-        std::vector<uint8_t>& is_dark
+        std::vector<float>& mass, std::vector<uint8_t>& is_dark
     );
     
     // Загрузка метаданных

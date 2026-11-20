@@ -79,8 +79,8 @@ class GraphicPage(QObject):
         self.last_time_curve = time.time()
         self.rest_time = 0.5
 
-        self.density_idx = 4
-        self.curve_idx = 5
+        self.density_idx = 3
+        self.curve_idx = 4
 
 
     def update_density(self, u: Universe):

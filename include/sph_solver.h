@@ -3,27 +3,36 @@
 
 class SPHSolver {
 public:
-    SPHSolver(OpenCLManager& manager);
+    explicit SPHSolver(OpenCLManager& manager);
     ~SPHSolver();
 
-    // Основной метод: загрузка данных -> расчет -> выгрузка ускорений
+    SPHSolver(const SPHSolver&) = delete;
+    SPHSolver& operator=(const SPHSolver&) = delete;
+
+    // Всё — cl_mem. Никаких ParticleBuffers.
     void solve(
-        std::vector<float>& accX, std::vector<float>& accY, std::vector<float>& accZ,
-        const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
-        const std::vector<float>& velX, const std::vector<float>& velY, const std::vector<float>& velZ,
-        const std::vector<float>& mass, const std::vector<uint8_t>& is_dark,
-        float h, float rest_density, float K_stiffness, float gamma, float alpha, float cs
+        cl_mem d_posX, cl_mem d_posY, cl_mem d_posZ,
+        cl_mem d_velX, cl_mem d_velY, cl_mem d_velZ,
+        cl_mem d_mass, cl_mem d_is_dark,
+        cl_mem d_accX, cl_mem d_accY, cl_mem d_accZ,
+        cl_mem unique_keys, cl_mem sorted_indices,
+        cl_mem cell_start, cl_mem cell_count,
+        int n_uniq, int offset, float inv_cell_size,
+        int N,
+        float h, float h2, float h8,
+        float rest_density,
+        float K_stiffness,
+        float gamma,
+        float alpha,
+        float cs
     );
 
 private:
     OpenCLManager& opencl_manager;
 
-    // Буферы
-    cl_mem d_posX = nullptr, d_posY = nullptr, d_posZ = nullptr;
-    cl_mem d_velX = nullptr, d_velY = nullptr, d_velZ = nullptr;
-    cl_mem d_mass = nullptr, d_is_dark = nullptr;
-    cl_mem d_accX = nullptr, d_accY = nullptr, d_accZ = nullptr;
-    cl_mem d_density = nullptr, d_pressure = nullptr; // Внутренние буферы для SPH
+    // Только внутренние буферы SPH
+    cl_mem d_density  = nullptr;
+    cl_mem d_pressure = nullptr;
 
     int current_capacity = 0;
 

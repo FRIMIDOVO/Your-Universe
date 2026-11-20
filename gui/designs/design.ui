@@ -130,6 +130,26 @@
            <property name="spacing">
             <number>12</number>
            </property>
+           <item row="5" column="0">
+            <widget class="QLabel" name="label_sph_gamma">
+             <property name="toolTip">
+              <string>Adiabatic index. It determines how sharply pressure rises when a medium is compressed.</string>
+             </property>
+             <property name="text">
+              <string>Gamma</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_sph_stiffness">
+             <property name="toolTip">
+              <string>Determines the repulsive force between particles when the density deviates from its equilibrium state</string>
+             </property>
+             <property name="text">
+              <string>Stiffness</string>
+             </property>
+            </widget>
+           </item>
            <item row="0" column="0">
             <widget class="QLabel" name="label">
              <property name="toolTip">
@@ -140,16 +160,6 @@
              </property>
              <property name="text">
               <string>Delta time</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_8">
-             <property name="text">
-              <string>0.001</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
              </property>
             </widget>
            </item>
@@ -169,6 +179,48 @@
              </property>
             </widget>
            </item>
+           <item row="0" column="1">
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>0.001</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="QSlider" name="horizontalSlider_gamma">
+             <property name="minimum">
+              <number>100</number>
+             </property>
+             <property name="maximum">
+              <number>500</number>
+             </property>
+             <property name="value">
+              <number>140</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QSlider" name="horizontalSlider_h">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>50</number>
+             </property>
+             <property name="value">
+              <number>5</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
            <item row="0" column="3">
             <widget class="QLabel" name="label_9">
              <property name="text">
@@ -179,100 +231,151 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_2">
-             <property name="toolTip">
-              <string>Momentum conservation coefficient during collisions.
-0.00 — enable SPH (Smoothed Particle Hydrodynamics)</string>
-             </property>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_18">
              <property name="text">
-              <string>Elasticity</string>
+              <string>1</string>
              </property>
             </widget>
            </item>
            <item row="1" column="1">
-            <widget class="QLabel" name="label_6">
+            <widget class="QLabel" name="label_13">
              <property name="text">
-              <string>0.00</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <string>0.1</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="2">
-            <widget class="QSlider" name="horizontalSlider_elasticity">
+           <item row="4" column="2">
+            <widget class="QSlider" name="horizontalSlider_alpha">
              <property name="minimum">
-              <number>0</number>
+              <number>1</number>
              </property>
              <property name="maximum">
               <number>100</number>
              </property>
-             <property name="pageStep">
-              <number>10</number>
-             </property>
              <property name="value">
-              <number>50</number>
+              <number>20</number>
              </property>
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
              </property>
-             <property name="tickPosition">
-              <enum>QSlider::TicksAbove</enum>
+            </widget>
+           </item>
+           <item row="3" column="3">
+            <widget class="QLabel" name="label_23">
+             <property name="text">
+              <string>100</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_sph_h">
+             <property name="toolTip">
+              <string>Neighbor search radius for pressure calculations</string>
+             </property>
+             <property name="text">
+              <string>Smoothing radius (h)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_24">
+             <property name="text">
+              <string>0.1</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="3">
+            <widget class="QLabel" name="label_27">
+             <property name="text">
+              <string>5</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="3">
+            <widget class="QLabel" name="label_25">
+             <property name="text">
+              <string>1</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_sph_alpha">
+             <property name="toolTip">
+              <string>Coefficient of artificial viscosity, which influences the dissipation of matter.</string>
+             </property>
+             <property name="text">
+              <string>Viscosity (alpha)</string>
              </property>
             </widget>
            </item>
            <item row="1" column="3">
-            <widget class="QLabel" name="label_7">
+            <widget class="QLabel" name="label_15">
              <property name="text">
-              <string>1.00</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <string>10</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_3">
-             <property name="toolTip">
-              <string>Simplification factor for Barnes-Hut gravity calculation.
-0 — enables calculation on the graphics card (GPU)</string>
+           <item row="3" column="2">
+            <widget class="QSlider" name="horizontalSlider_cs">
+             <property name="minimum">
+              <number>1</number>
              </property>
-             <property name="text">
-              <string>Theta</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_4">
-             <property name="text">
-              <string>0</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="2">
-            <widget class="QSlider" name="horizontalSlider_theta">
              <property name="maximum">
-              <number>10</number>
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>20</number>
              </property>
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
              </property>
-             <property name="tickPosition">
-              <enum>QSlider::TicksAbove</enum>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_sph_cs">
+             <property name="toolTip">
+              <string>Determines the speed of the medium's response to compression</string>
+             </property>
+             <property name="text">
+              <string>Speed of sound (cs)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLabel" name="label_22">
+             <property name="text">
+              <string>1</string>
              </property>
             </widget>
            </item>
            <item row="2" column="3">
-            <widget class="QLabel" name="label_5">
+            <widget class="QLabel" name="label_21">
+             <property name="text">
+              <string>100</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QLabel" name="label_26">
              <property name="text">
               <string>1</string>
              </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
+            </widget>
+           </item>
+           <item row="2" column="2">
+            <widget class="QSlider" name="horizontalSlider_stiffness">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>10</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
              </property>
             </widget>
            </item>
@@ -322,7 +425,7 @@
           <property name="title">
            <string>Particle settings</string>
           </property>
-          <layout class="QGridLayout" name="particleSettingsLayout" columnstretch="0,0,0,0">
+          <layout class="QGridLayout" name="particleSettingsLayout" columnstretch="0,0,0,0,0">
            <property name="leftMargin">
             <number>12</number>
            </property>
@@ -338,28 +441,14 @@
            <property name="spacing">
             <number>12</number>
            </property>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_19">
-             <property name="text">
-              <string>Baryons</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="2">
-            <widget class="QLabel" name="label_20">
-             <property name="text">
-              <string>Dark matter</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
+           <item row="1" column="1">
             <widget class="QLabel" name="label_10">
              <property name="text">
               <string>Count</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
+           <item row="1" column="2">
             <widget class="QSpinBox" name="spinBox_b_count">
              <property name="maximum">
               <number>1000000</number>
@@ -372,43 +461,27 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="2">
-            <widget class="QSpinBox" name="spinBox_dm_count">
-             <property name="maximum">
-              <number>1000000</number>
-             </property>
-             <property name="singleStep">
-              <number>500</number>
-             </property>
-             <property name="value">
-              <number>20000</number>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_12">
-             <property name="text">
-              <string>Mass</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_b_mass">
+           <item row="3" column="2">
+            <widget class="QSpinBox" name="spinBox_b_spawn_r">
              <property name="minimum">
-              <double>0.010000000000000</double>
+              <number>1</number>
              </property>
              <property name="maximum">
-              <double>100.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.100000000000000</double>
+              <number>100</number>
              </property>
              <property name="value">
-              <double>1.000000000000000</double>
+              <number>25</number>
              </property>
             </widget>
            </item>
-           <item row="2" column="2">
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_17">
+             <property name="text">
+              <string>Omega (rotation speed)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="3">
             <widget class="QDoubleSpinBox" name="doubleSpinBox_dm_mass">
              <property name="minimum">
               <double>0.010000000000000</double>
@@ -424,20 +497,23 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_14">
-             <property name="text">
-              <string>Radius</string>
+           <item row="4" column="3">
+            <widget class="QSpinBox" name="spinBox_dm_omega">
+             <property name="minimum">
+              <number>-99</number>
+             </property>
+             <property name="value">
+              <number>1</number>
              </property>
             </widget>
            </item>
-           <item row="3" column="1">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_b_radius">
+           <item row="2" column="2">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_b_mass">
              <property name="minimum">
               <double>0.010000000000000</double>
              </property>
              <property name="maximum">
-              <double>10.000000000000000</double>
+              <double>100.000000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.100000000000000</double>
@@ -447,40 +523,67 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="2">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_dm_radius">
-             <property name="minimum">
-              <double>0.010000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>10.000000000000000</double>
-             </property>
-             <property name="value">
-              <double>1.000000000000000</double>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_12">
+             <property name="text">
+              <string>Mass</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="3" column="1">
             <widget class="QLabel" name="label_16">
              <property name="text">
               <string>Spawn radius</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QSpinBox" name="spinBox_b_spawn_r">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>25</number>
+           <item row="0" column="2">
+            <widget class="QLabel" name="label_19">
+             <property name="text">
+              <string>Baryons</string>
              </property>
             </widget>
            </item>
            <item row="4" column="2">
+            <widget class="QSpinBox" name="spinBox_b_omega">
+             <property name="minimum">
+              <number>-99</number>
+             </property>
+             <property name="value">
+              <number>1</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QSpinBox" name="spinBox_dm_count">
+             <property name="maximum">
+              <number>1000000</number>
+             </property>
+             <property name="singleStep">
+              <number>500</number>
+             </property>
+             <property name="value">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="4">
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Preferred</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="3" column="3">
             <widget class="QSpinBox" name="spinBox_dm_spawn_r">
              <property name="minimum">
               <number>1</number>
@@ -493,39 +596,28 @@
              </property>
             </widget>
            </item>
-           <item row="5" column="0">
-            <widget class="QLabel" name="label_17">
+           <item row="0" column="3">
+            <widget class="QLabel" name="label_20">
              <property name="text">
-              <string>Omega (rotation speed)</string>
+              <string>Dark matter</string>
              </property>
             </widget>
            </item>
-           <item row="5" column="1">
-            <widget class="QSpinBox" name="spinBox_b_omega">
-             <property name="minimum">
-              <number>-99</number>
+           <item row="3" column="0">
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
              </property>
-             <property name="value">
-              <number>1</number>
+             <property name="sizeType">
+              <enum>QSizePolicy::Preferred</enum>
              </property>
-            </widget>
-           </item>
-           <item row="5" column="2">
-            <widget class="QSpinBox" name="spinBox_dm_omega">
-             <property name="minimum">
-              <number>-99</number>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
              </property>
-             <property name="value">
-              <number>1</number>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="3">
-            <widget class="QLabel" name="label_11">
-             <property name="text">
-              <string>for DM doesn't matter</string>
-             </property>
-            </widget>
+            </spacer>
            </item>
           </layout>
          </widget>
@@ -826,268 +918,6 @@
         </item>
         <item>
          <spacer name="verticalSpacer_snapshot">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeType">
-           <enum>QSizePolicy::Expanding</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="tab_sph">
-       <attribute name="title">
-        <string>SPH</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="sphLayout">
-        <property name="spacing">
-         <number>12</number>
-        </property>
-        <property name="leftMargin">
-         <number>14</number>
-        </property>
-        <property name="topMargin">
-         <number>14</number>
-        </property>
-        <property name="rightMargin">
-         <number>14</number>
-        </property>
-        <property name="bottomMargin">
-         <number>14</number>
-        </property>
-        <item>
-         <widget class="QGroupBox" name="groupBox_sph">
-          <property name="title">
-           <string>SPH parameters</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_sph" columnstretch="0,0,0,0">
-           <property name="leftMargin">
-            <number>12</number>
-           </property>
-           <property name="topMargin">
-            <number>12</number>
-           </property>
-           <property name="rightMargin">
-            <number>12</number>
-           </property>
-           <property name="bottomMargin">
-            <number>12</number>
-           </property>
-           <property name="spacing">
-            <number>12</number>
-           </property>
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_sph_h">
-             <property name="toolTip">
-              <string>Neighbor search radius for pressure calculations</string>
-             </property>
-             <property name="text">
-              <string>Smoothing radius (h)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="3">
-            <widget class="QLabel" name="label_15">
-             <property name="text">
-              <string>10</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="3">
-            <widget class="QLabel" name="label_27">
-             <property name="text">
-              <string>5</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="label_sph_gamma">
-             <property name="toolTip">
-              <string>Adiabatic index. It determines how sharply pressure rises when a medium is compressed.</string>
-             </property>
-             <property name="text">
-              <string>Gamma</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="2">
-            <widget class="QSlider" name="horizontalSlider_cs">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>20</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_sph_cs">
-             <property name="toolTip">
-              <string>Determines the speed of the medium's response to compression</string>
-             </property>
-             <property name="text">
-              <string>Speed of sound (cs)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="2">
-            <widget class="QSlider" name="horizontalSlider_gamma">
-             <property name="minimum">
-              <number>100</number>
-             </property>
-             <property name="maximum">
-              <number>500</number>
-             </property>
-             <property name="value">
-              <number>140</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="1">
-            <widget class="QLabel" name="label_26">
-             <property name="text">
-              <string>1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_22">
-             <property name="text">
-              <string>1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_sph_stiffness">
-             <property name="toolTip">
-              <string>Determines the repulsive force between particles when the density deviates from its equilibrium state</string>
-             </property>
-             <property name="text">
-              <string>Stiffness</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="3">
-            <widget class="QLabel" name="label_23">
-             <property name="text">
-              <string>100</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLabel" name="label_18">
-             <property name="text">
-              <string>1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_sph_alpha">
-             <property name="toolTip">
-              <string>Coefficient of artificial viscosity, which influences the dissipation of matter.</string>
-             </property>
-             <property name="text">
-              <string>Viscosity (alpha)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="2">
-            <widget class="QSlider" name="horizontalSlider_alpha">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>20</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="3">
-            <widget class="QLabel" name="label_21">
-             <property name="text">
-              <string>100</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="2">
-            <widget class="QSlider" name="horizontalSlider_h">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>50</number>
-             </property>
-             <property name="value">
-              <number>5</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="3">
-            <widget class="QLabel" name="label_25">
-             <property name="text">
-              <string>1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="1">
-            <widget class="QLabel" name="label_24">
-             <property name="text">
-              <string>0.1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_13">
-             <property name="text">
-              <string>0.1</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="2">
-            <widget class="QSlider" name="horizontalSlider_stiffness">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>10</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer_sph_bottom">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>

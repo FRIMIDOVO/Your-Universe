@@ -1,55 +1,60 @@
 #pragma once
 #include <vector>
-#include <array>
 #include <cstdint>
-#include <cmath>
-#include <algorithm>
-
-// Координаты ячейки в сетке
-struct Cell {
-    int32_t x = 0, y = 0, z = 0;
-    
-    bool operator==(const Cell& o) const { return x == o.x && y == o.y && z == o.z; }
-    bool operator!=(const Cell& o) const { return !(*this == o); }
-};
+#include "opencl_manager.h"
 
 class SpatialGrid {
 public:
-    explicit SpatialGrid(float cell_size);
+    explicit SpatialGrid(OpenCLManager& opencl_manager);
+    ~SpatialGrid();
+
+    SpatialGrid(const SpatialGrid&) = delete;
+    SpatialGrid& operator=(const SpatialGrid&) = delete;
 
     void set_cell_size(float cs);
 
-    // Строит сетку по текущим позициям
     void build(
-        const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
-        const std::vector<uint8_t>& is_dark // для скипа тёмной материи сразу
+        const std::vector<float>& posX,
+        const std::vector<float>& posY,
+        const std::vector<float>& posZ,
+        const std::vector<uint8_t>& is_dark
     );
 
-    // Радиус поиска
-    void query_radius(
-        std::vector<int>& out_indices,
-        float px, float py, float pz, float R,
-        const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ
-    ) const;
+    cl_mem getUniqueKeys()     const { return d_unique_keys_; }
+    cl_mem getSortedIndices()  const { return d_sorted_indices_; }
+    cl_mem getCellStart()      const { return d_cell_start_; }
+    cl_mem getCellCount()      const { return d_cell_count_; }
+
+    int   getNumUniqueCells() const { return num_unique_cells_; }
+    int   getOffset()         const { return offset_; }
+    float getInvCellSize()    const { return inv_cell_size_; }
 
 private:
-    float cell_size_;
-    float inv_cell_size_;
+    OpenCLManager& cl_manager_;
 
-    // Хэш-таблица (открытая адресация)
-    std::vector<Cell>     slot_keys_;
-    std::vector<uint32_t> slot_begin_;
-    std::vector<uint32_t> slot_count_;
-    
-    // Плоский массив индексов частиц
-    std::vector<uint32_t> indices_;
-    std::vector<uint32_t> cursor_;
+    cl_mem d_unique_keys_    = nullptr;
+    cl_mem d_sorted_indices_ = nullptr;
+    cl_mem d_cell_start_     = nullptr;
+    cl_mem d_cell_count_     = nullptr;
 
-    uint32_t capacity_ = 0;   // Размер таблицы (степень двойки)
-    uint32_t mask_ = 0;       // capacity_ - 1
-    
-    static constexpr int32_t SENTINEL = INT32_MIN;
+    // Переиспользуемые CPU-буферы
+    std::vector<uint64_t> host_keys_;
+    std::vector<uint64_t> host_unique_keys_;
+    std::vector<int>      host_start_;
+    std::vector<int>      host_count_;
 
-    uint32_t hash_cell(const Cell& c) const;
-    Cell pos_to_cell(float x, float y, float z) const;
+    // Переиспользуемые буферы сортировки
+    std::vector<uint32_t> order_;
+    std::vector<uint64_t> sorted_keys_;
+    std::vector<uint32_t> sorted_idx_;
+
+    int   current_max_particles_ = 0;
+    int   num_unique_cells_      = 0;
+    int   offset_                = 1 << 20;
+    float cell_size_             = 1.0f;
+    float inv_cell_size_         = 1.0f;
+
+    void init(int maxParticles);
+    void releaseBuffers();
+    uint64_t make_key(int cx, int cy, int cz) const;
 };

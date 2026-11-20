@@ -15,8 +15,9 @@ namespace GalaxySaver {
 
     namespace {
 
-        const char* const kColumns = "px,py,pz,vx,vy,vz,mass,radius,is_dark";
-        const int kFloatFields = 8;
+        // Без radius: px,py,pz,vx,vy,vz,mass,is_dark
+        const char* const kColumns = "px,py,pz,vx,vy,vz,mass,is_dark";
+        const int kFloatFields = 7;   // было 8
         const char* const kMetaFile = "metadata.json";
 
         bool read_row(const std::string& line, float* values, int& dark) {
@@ -44,14 +45,13 @@ namespace GalaxySaver {
         const std::string& dir,
         const std::vector<float>& posX, const std::vector<float>& posY, const std::vector<float>& posZ,
         const std::vector<float>& velX, const std::vector<float>& velY, const std::vector<float>& velZ,
-        const std::vector<float>& mass, const std::vector<float>& radius,
-        const std::vector<uint8_t>& is_dark
+        const std::vector<float>& mass, const std::vector<uint8_t>& is_dark
     ) {
         const std::size_t count = posX.size();
 
         if (posY.size() != count || posZ.size() != count ||
             velX.size() != count || velY.size() != count || velZ.size() != count ||
-            mass.size() != count || radius.size() != count || is_dark.size() != count) {
+            mass.size() != count || is_dark.size() != count) {
             std::cerr << "Save failed: particle arrays have different sizes\n";
             return;
         }
@@ -76,7 +76,7 @@ namespace GalaxySaver {
         for (std::size_t i = 0; i < count; ++i) {
             out << posX[i] << ',' << posY[i] << ',' << posZ[i] << ','
                 << velX[i] << ',' << velY[i] << ',' << velZ[i] << ','
-                << mass[i] << ',' << radius[i] << ','
+                << mass[i] << ','
                 << static_cast<int>(is_dark[i]) << '\n';
         }
 
@@ -142,8 +142,7 @@ namespace GalaxySaver {
         const std::string& dir,
         std::vector<float>& posX, std::vector<float>& posY, std::vector<float>& posZ,
         std::vector<float>& velX, std::vector<float>& velY, std::vector<float>& velZ,
-        std::vector<float>& mass, std::vector<float>& radius,
-        std::vector<uint8_t>& is_dark
+        std::vector<float>& mass, std::vector<uint8_t>& is_dark
     ) {
         std::ifstream in(dir);
         if (!in.is_open()) {
@@ -156,7 +155,7 @@ namespace GalaxySaver {
 
         posX.clear(); posY.clear(); posZ.clear();
         velX.clear(); velY.clear(); velZ.clear();
-        mass.clear(); radius.clear(); is_dark.clear();
+        mass.clear(); is_dark.clear();
 
         std::size_t skipped = 0;
         while (std::getline(in, line)) {
@@ -176,7 +175,6 @@ namespace GalaxySaver {
             velY.push_back(values[4]);
             velZ.push_back(values[5]);
             mass.push_back(values[6]);
-            radius.push_back(values[7]);
             is_dark.push_back(static_cast<uint8_t>(dark != 0));
         }
 
